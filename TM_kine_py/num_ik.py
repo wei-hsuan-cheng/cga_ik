@@ -32,45 +32,34 @@ def main():
     robot = RobotSerial(dh_params, dh_type = "normal") # "normal" or "modified" D-H parameters
     # TBD: idk why when i try to run TM5-700 and TM5-900, the modified and normal D-H parameters seems to be messed up.
 
+
+    # # Reference robot: AUBO-i10 serial robot, see details of the D-H parameters at "../AUBO-i10_DH_para.jpeg"
+    # dh_params = np.array([[0.163 , 0.    , 0.5 * pi , 0.       ],  # d1, a1, alpha1, theta1
+    #                       [0.    , 0.632 , pi       , 0.5 * pi ],  # d2, a2, alpha2, theta2
+    #                       [0.    , 0.6005, pi       , 0.       ],  # d3, a3, alpha3, theta3
+    #                       [0.2013, 0.    , -0.5 * pi, -0.5 * pi],  # d4, a4, alpha4, theta4
+    #                       [0.1025, 0.    , 0.5 * pi , 0.       ],  # d5, a5, alpha5, theta5
+    #                       [0.094 , 0.    , 0.       , 0.       ]]) # d6, a6, alpha6, theta6
+
     # =====================================
-    # forward
+    # inverse
     # =====================================
-    theta_ik_start = np.array([0, 0, pi / 2, 0, pi / 2, -pi / 2])
-    theta_zero = np.array([0, 0, 0, 0, 0, 0])
 
-    theta1 = 140.161
-    theta2 = -78.589
-    theta3 = 60.045 
-    theta4 = 146.063
-    theta5 = 63.064 
-    theta6 = 59.461 
+    xyz = np.array([[0.4175], [-0.1223], [0.3611]])
+    abc = np.array([pi, pi / 4, pi])
+    end = Frame.from_euler_3(abc, xyz)
+    robot.inverse(end)
 
-    theta1 *= d2r
-    theta2 *= d2r
-    theta3 *= d2r
-    theta4 *= d2r
-    theta5 *= d2r
-    theta6 *= d2r
-
-    theta = np.array([theta1, theta2, theta3, theta4, theta5, theta6])
-
-    f = robot.forward(theta)
-
-    print("-------forward-------")
-    print("end frame t_4_4:")
-    print(f.t_4_4)
-    print("end frame xyz:")
-    print(f.t_3_1.reshape([3, ]))
-    print("end frame abc:")
-    print(f.euler_3)
-    print("end frame rotational matrix:")
-    print(f.r_3_3)
-    print("end frame quaternion:")
-    print(f.q_4)
-    print("end frame angle-axis:")
-    print(f.r_3)
-
+    print("inverse is successful: {0}".format(robot.is_reachable_inverse))
+    print("axis values: \n{0}".format(robot.axis_values))
     robot.show()
+
+    # # example of unsuccessful inverse kinematics
+    # xyz = np.array([[2.2], [0.], [1.9]])
+    # end = Frame.from_euler_3(abc, xyz)
+    # robot.inverse(end)
+
+    # print("inverse is successful: {0}".format(robot.is_reachable_inverse))
 
 
 if __name__ == "__main__":
