@@ -105,7 +105,7 @@ class CGA:
         res[31]=a[31]
         return CGA.fromarray(res)
 
-    def Dual(a):
+    def Dual(a): # Definition of DUAL here: M.Dual() = e12345 * M = M * e12345
         """CGA.Dual
         
         Poincare duality operator.

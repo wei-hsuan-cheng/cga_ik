@@ -2,10 +2,6 @@
 cga_ik, an inverse kinematics (IK) solver based on conformal geometric algebra (CGA)
 Written by wei-hsuan-cheng
 
-G41 structure: e1 * e1 = e2 * e2 = e3 * e3 = e4 * e4 = +1, e5 * e5 = -1
-Definition of DUAL here: M.Dual() = e12345 * M = M * e12345
-Null bases: ni = e5 + e4, no = (e5 - e4) * 0.5
-
 References for this code:
 https://slides.com/hugohadfield/game2020
 https://www.mic-journal.no/ABS/MIC-2016-1-6.asp/
@@ -14,8 +10,8 @@ https://www.sciencedirect.com/science/article/pii/S0094114X22001045
 
 '''
 Potential issues:
+rooms for optimization (maybe no need for Grade() everytime)
 '''
-
 from time import time
 import numpy as np
 from math import pi, sqrt, atan2
@@ -116,6 +112,7 @@ def down(vec_G41): # down-projection (G41 vec to G3 vec)
     else:
         print(f"\nDimension error (not a G41 element or not able to down-project to G3)")
 
+
 '''
 D-H params, base frame, target pose, and the configuration params
 '''
@@ -191,10 +188,10 @@ org1 = X1
 ## X3 and X4
 # Intersect 2 spheres gives 1 circle
 Sc = (X5 - 0.5 * (d4 ** 2) * ni).Dual() # grade-4 sphere
-K0 = (no - (Sc.Dual() | no) * ni).Dual(); K0 = K0.Normalized() # grade-4 sphere
+K0 = (no - (Sc.Dual() | no) * ni).Dual(); K0 = Grade(K0, 4).Normalized() # grade-4 sphere
 C5k = (Sc & K0).Normalized() # grade-3 circle
 # Intersect the circle and a plane gives a point pair
-PPc = (X5 ^ e1 ^ e2 ^ ni) & C5k; PPc = (-1) * PPc.Normalized() # grade-2 point pair
+PPc = (X5 ^ e1 ^ e2 ^ ni) & C5k; PPc = (-1) * Grade(PPc, 2).Normalized() # grade-2 point pair
 PPcd = (PPc | PPc) * ((PPc ^ ni) | (PPc ^ ni)).Inverse(); PPcd = PPcd[0] # point pair distance
 
 # The square of the point pair describes if the spheres intersect
@@ -219,7 +216,7 @@ Pc_hor = X5 ^ n56 ^ ni
 # Line passing through X4 and X5
 L54 = Pc_ver & Pc_hor
 # Sphere centred at X5 w/ radius d5
-S5 = (X5 - 0.5 * (d5 ** 2) * ni).Dual(); S5 = S5.Normalized();
+S5 = (X5 - 0.5 * (d5 ** 2) * ni).Dual(); S5 = Grade(S5, 4).Normalized();
 # Intersect the sphere and a line gives a point pair
 PP4 = L54.Dual() | S5
 PP4d = (PP4 | PP4) * ((PP4 ^ ni) | (PP4 ^ ni)).Inverse(); PP4d = PP4d[0] # point pair distance
@@ -230,7 +227,7 @@ if (PP4 * PP4)[0] > 0:
     endpoint4 = X4
 
 # Sphere centred at X4 w/ radius d4
-S4 = (X4 - 0.5 * (d4 ** 2) * ni).Dual(); S4 = S4.Normalized()
+S4 = (X4 - 0.5 * (d4 ** 2) * ni).Dual(); S4 = Grade(S4, 4).Normalized()
 L34 = X4 ^ Pc.Dual() ^ ni
 # Intersect the sphere and a line gives a point pair
 PP3 = L34.Dual() | S4
@@ -243,11 +240,11 @@ if (PP3 * PP3)[0] > 0:
 
 ## X2
 # Spheres centred at X1 w/ radius a2 and centred at X3 w/ radius a3
-S3 = (X3 - 0.5 * (a3 ** 2) * ni).Dual(); S3 = S3.Normalized() # grade-4 plane
-S1 = (X1 - 0.5 * (a2 ** 2) * ni).Dual(); S1 = S1.Normalized() # grade-4 plane
+S3 = (X3 - 0.5 * (a3 ** 2) * ni).Dual(); S3 = Grade(S3, 4).Normalized() # grade-4 plane
+S1 = (X1 - 0.5 * (a2 ** 2) * ni).Dual(); S1 = Grade(S1, 4).Normalized() # grade-4 plane
 C2 = (S1 & S3).Normalized() # grade-3 circle
 # Intersect the circle and a plane gives a point pair
-PP2 = (-1) * Pc & C2; PP2 = PP2.Normalized() # grade-2 point pair
+PP2 = (-1) * Pc & C2; PP2 = Grade(PP2, 2).Normalized() # grade-2 point pair
 PP2d = (PP2 | PP2) * ((PP2 ^ ni) | (PP2 ^ ni)).Inverse(); PP2d = PP2d[0] # point pair distance
 
 if (PP2 * PP2)[0] > 0:
@@ -280,37 +277,37 @@ cga_offset5 = 0
 cga_offset6 = pi
 
 # Vectors and bivectors
-ath1 =                    e2; ath1 = ath1.Normalized()
-bth1 = klr * (1) * Pc.Dual(); bth1 = bth1.Normalized()
-Nth1 =               e1 ^ e2; Nth1 = Nth1.Normalized()
+ath1 =                    e2; ath1 = Grade(ath1, 1).Normalized()
+bth1 = klr * (1) * Pc.Dual(); bth1 = Grade(bth1, 1).Normalized()
+Nth1 =               e1 ^ e2; Nth1 = Grade(Nth1, 2).Normalized()
 
-ath2 =      L01 | (ni ^ no); ath2 = ath2.Normalized()
-bth2 =      L12 | (ni ^ no); bth2 = bth2.Normalized()
-Nth2 = klr * (Pc | no) | ni; Nth2 = Nth2.Normalized()
+ath2 =      L01 | (ni ^ no); ath2 = Grade(ath2, 1).Normalized()
+bth2 =      L12 | (ni ^ no); bth2 = Grade(bth2, 1).Normalized()
+Nth2 = klr * (Pc | no) | ni; Nth2 = Grade(Nth2, 2).Normalized()
 
-ath3 =      L12 | (ni ^ no); ath3 = ath3.Normalized()
-bth3 =      L23 | (ni ^ no); bth3 = bth3.Normalized()
-Nth3 = klr * (Pc | no) | ni; Nth3 = Nth3.Normalized()
+ath3 =      L12 | (ni ^ no); ath3 = Grade(ath3, 1).Normalized()
+bth3 =      L23 | (ni ^ no); bth3 = Grade(bth3, 1).Normalized()
+Nth3 = klr * (Pc | no) | ni; Nth3 = Grade(Nth3, 2).Normalized()
 
-ath4 =                    L23 | (ni ^ no); ath4 = ath4.Normalized()
-bth4 = kfn * ( (-1) * (L54 | (ni ^ no)) ); bth4 = bth4.Normalized()
-Nth4 =               klr * (Pc | no) | ni; Nth4 = Nth4.Normalized()
+ath4 =                    L23 | (ni ^ no); ath4 = Grade(ath4, 1).Normalized()
+bth4 = kfn * ( (-1) * (L54 | (ni ^ no)) ); bth4 = Grade(bth4, 1).Normalized()
+Nth4 =               klr * (Pc | no) | ni; Nth4 = Grade(Nth4, 2).Normalized()
 
-ath5 =                klr * (1) * Pc.Dual(); ath5 = ath5.Normalized()
-bth5 =                             (-1) * z6; bth5 = bth5.Normalized()
-Nth5 = kfn * ( (1) * L54.Dual() ^ no ) | ni; Nth5 = Nth5.Normalized()
+ath5 =                klr * (1) * Pc.Dual(); ath5 = Grade(ath5, 1).Normalized()
+bth5 =                             (-1) * z6; bth5 = Grade(bth5, 1).Normalized()
+Nth5 = kfn * ( (1) * L54.Dual() ^ no ) | ni; Nth5 = Grade(Nth5, 2).Normalized()
 
 # Still have rooms to be improved for calculating theta6
-ath6 = kfn * ( (-1) * (L54 | (ni ^ no)) ); ath6 = ath6.Normalized() # y6 lies in vec_54 (L54 unit direction vector) as theta6 = 0
-bth6 =                          (-1) * y6; bth6 = bth6.Normalized()
-Nth6 =                          (1) * n56; Nth6 = Nth6.Normalized()
+ath6 = kfn * ( (-1) * (L54 | (ni ^ no)) ); ath6 = Grade(ath6, 1).Normalized() # y6 lies in vec_54 (L54 unit direction vector) as theta6 = 0
+bth6 =                          (-1) * y6; bth6 = Grade(bth6, 1).Normalized()
+Nth6 =                          (1) * n56; Nth6 = Grade(Nth6, 2).Normalized()
 
 '''
 The sign of the configuration params may vary, depending on different definition of the DUAL operator (different sign). Other kind of definition may lead to:
-X3 = (1 - klr * PP3 * (1 / sqrt((PP3 * PP3)[0]))) * (PP3 | ni); X3 = up(down(X3))bth1 = klr * (-1) * Pc.Dual(); bth1 = bth1.Normalized()
-ath5 =                klr * (-1) * Pc.Dual(); ath5 = ath5.Normalized()
-Nth5 = kfn * ( (-1) * L54.Dual() ^ no ) | ni; Nth5 = Nth5.Normalized()
-Nth6 =                         (-1) * n56; Nth6 = Nth6.Normalized()
+X3 = (1 - klr * PP3 * (1 / sqrt((PP3 * PP3)[0]))) * (PP3 | ni); X3 = up(down(X3))bth1 = klr * (-1) * Pc.Dual(); bth1 = Grade(bth1, 1).Normalized()
+ath5 =                klr * (-1) * Pc.Dual(); ath5 = Grade(ath5, 1).Normalized()
+Nth5 = kfn * ( (-1) * L54.Dual() ^ no ) | ni; Nth5 = Grade(Nth5, 2).Normalized()
+Nth6 =                         (-1) * n56; Nth6 = Grade(Nth6, 2).Normalized()
 '''
 
 # Solving joint variables [deg]
@@ -322,11 +319,9 @@ theta5 = atan2( ( (ath5 ^ bth5) * Nth5.Inverse() )[0], (ath5 | bth5)[0] ) + cga_
 theta6 = atan2( ( (ath6 ^ bth6) * Nth6.Inverse() )[0], (ath6 | bth6)[0] ) + cga_offset6; theta6 = constrained_angle(theta6) * r2d
 
 joints = [theta1, theta2, theta3, theta4, theta5, theta6]
-end_time = time() # [s]
-
-print(f"\nRobot configuration = [{kud}, {klr}, {kfn}]")
 print(f"\njoints = {joints}")
 print(f"\nframes:\nX0 = {down(X0)},\nX1 = {down(X1)},\nX2 = {down(X2)},\nX3 = {down(X3)},\nX4 = {down(X4)},\nX5 = {down(X5)},\nX6 = {down(X6)},")
+end_time = time() # [s]
 print(f"\ncomputing time = {(end_time - start_time) * 1000} [ms]")
 # testing pose
 # Correct: 

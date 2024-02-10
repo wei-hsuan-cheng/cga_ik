@@ -27,6 +27,8 @@ e1345 = CGA(1.0, 29)
 e2345 = CGA(1.0, 30)
 # 5-vector
 e12345 = CGA(1.0, 31)
+# pseudo scalar
+I5 = e12345
 
 G41_bases = 1 + e1 + e2 + e3 + e4 + e5 + e12 + e13 + e14 + e15 + e23 + e24 + e25 + e34 + e35 + e45 + e123 + e124 + e125 + e134 + e135 + e145 + e234 + e235 + e245 + e345 + e1234 + e1235 + e1245 + e1345 + e2345 + e12345
 print(f"\nG41 bases = {G41_bases}")
@@ -87,7 +89,6 @@ def down(vec_G41): # down-projection (G41 vec to G3 vec)
     else:
         print(f"\nDimension error (not a G41 element or not able to down-project to G3)")
 
-
 ####################################################################################################
 # Extract each element of a G41 vec
 a = 2 * e1 + 1 * e2
@@ -103,8 +104,8 @@ b_reverse = ~b
 print(f"\nreverse of b = {b_reverse}")
 
 # Dual
-dual_e1 = e1.Dual()
-print(f"\ndual of e1 = {dual_e1}")
+dual_b = b.Dual()
+print(f"\ndual of b = {dual_b}")
 
 # Inner product "|"
 inner_e1e1 = e1 | e1
@@ -188,4 +189,5 @@ print(f"\nGrade-1 point: {PX}")
 print(f"\nG3 point by down-projection: {PX_down}")
 print(f"\nGrade-3 line: {LINE}")
 print(f"\nGrade-4 sphere: {SPHERE}")
+
 
