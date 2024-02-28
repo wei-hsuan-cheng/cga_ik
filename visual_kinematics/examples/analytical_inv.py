@@ -9,13 +9,12 @@ from math import pi, sqrt, sin, cos, atan2
 def main():
     np.set_printoptions(precision=3, suppress=True)
 
-    # Reference robot: AUBO-i10 serial robot, see details of the D-H parameters at "../AUBO-i10_DH_para.jpeg"
-    dh_params = np.array([[0.163 , 0.    , 0.5 * pi , 0.       ],  # d1, a1, alpha1, theta1
-                          [0.    , 0.632 , pi       , 0.5 * pi ],  # d2, a2, alpha2, theta2
-                          [0.    , 0.6005, pi       , 0.       ],  # d3, a3, alpha3, theta3
-                          [0.2013, 0.    , -0.5 * pi, -0.5 * pi],  # d4, a4, alpha4, theta4
-                          [0.1025, 0.    , 0.5 * pi , 0.       ],  # d5, a5, alpha5, theta5
-                          [0.094 , 0.    , 0.       , 0.       ]]) # d6, a6, alpha6, theta6
+    dh_params = np.array([[0.163, 0., 0.5 * pi, 0.],
+                          [0., 0.632, pi, 0.5 * pi],
+                          [0., 0.6005, pi, 0.],
+                          [0.2013, 0., -0.5 * pi, -0.5 * pi],
+                          [0.1025, 0., 0.5 * pi, 0.],
+                          [0.094, 0., 0., 0.]])
 
     # return (is_reachable, theta[n, ])
     def aubo10_inv(dh_params, f):
@@ -83,7 +82,7 @@ def main():
                 index = i
         return True, theta_all[index]
 
-    robot = RobotSerial(dh_params, analytical_inv = aubo10_inv)
+    robot = RobotSerial(dh_params, analytical_inv=aubo10_inv)
 
     # =====================================
     # trajectory
@@ -93,9 +92,7 @@ def main():
               Frame.from_euler_3(np.array([0.25 * pi, 0., 0.75 * pi]), np.array([[0.48127], [0.], [1.13182]])),
               Frame.from_euler_3(np.array([0.5 * pi, 0., pi]), np.array([[0.48127], [0.], [0.63182]]))]
     trajectory = RobotTrajectory(robot, frames)
-    
-    # trajectory.show(motion="lin")
-    trajectory.show(motion = "p2p")
+    trajectory.show(motion="lin")
 
 
 if __name__ == "__main__":
