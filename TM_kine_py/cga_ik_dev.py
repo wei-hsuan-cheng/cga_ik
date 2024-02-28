@@ -58,6 +58,9 @@ d2r = 1 / r2d
 mm2m = 10 ** (-3) # [mm] to [m]
 m2mm = 1 / mm2m
 
+# R6vec = [a3 + d5, d4, d1 + a2 - d6, 180, 45, 180]
+angles = [180, 45, 180]
+degrees = True
 
 '''
 Self-defined functions
@@ -148,14 +151,15 @@ def DHParamsandCGAOffsets():
            alpha5, a5, d6, \
            cga_offset1, cga_offset2, cga_offset3, cga_offset4, cga_offset5, cga_offset6
 
-def RobotConfig(config_params):
+def RobotConfig():
     # Robot configuration (# 8 configurations, closed-form solution)
-    kud = config_params[0]; # elbow up: 1, elbow down: -1
-    klr = config_params[1]; # should right: 1, should left: -1 (shouler here is connected to the big arm)
-    kfn = config_params[2]; # wrist not flipped: 1, wrist flipped: -1
+    kud = 1; # elbow up: 1, elbow down: -1
+    klr = 1; # should right: 1, should left: -1 (shouler here is connected to the big arm)
+    kfn = 1; # wrist not flipped: 1, wrist flipped: -1
     return kud, klr, kfn
 
-def SixDVecToRp(R6vec, degrees):
+def SixDVecToRp(angles, degrees):
+# def SixDVecToRp(R6vec, degrees):
     alpha0, a0, d1, \
     alpha1, a1, d2, \
     alpha2, a2, d3, \
@@ -163,15 +167,16 @@ def SixDVecToRp(R6vec, degrees):
     alpha4, a4, d5, \
     alpha5, a5, d6, \
     cga_offset1, cga_offset2, cga_offset3, cga_offset4, cga_offset5, cga_offset6 = DHParamsandCGAOffsets()
-    R = Rotation.from_euler('zyx', R6vec[3:], degrees)
+    # R = Rotation.from_euler('zyx', R6vec[3:], degrees)
+    R = Rotation.from_euler('zyx', angles, degrees)
     R = R.as_matrix()
     R1 = R[:3, 0].tolist()
     R2 = R[:3, 1].tolist()
     R3 = R[:3, 2].tolist()
-    p = R6vec[0:3]
+    p = [a3 + d5, d4, d1 + a2 - d6]
     return R1, R2, R3, p
 
-def TargetPose(R6vec, degrees):
+def TargetPose():
     alpha0, a0, d1, \
     alpha1, a1, d2, \
     alpha2, a2, d3, \
@@ -212,7 +217,7 @@ def TargetPose(R6vec, degrees):
     # z6 = Rt * (-1) * e3 * ~Rt
 
     # X6 or {6}-org (testing pose)
-    R1, R2, R3, p = SixDVecToRp(R6vec, degrees)
+    R1, R2, R3, p = SixDVecToRp(angles, degrees)
     X6 = up(R2G(p))
     org6 = X6
     # {6}-axes (testing pose)
@@ -222,7 +227,7 @@ def TargetPose(R6vec, degrees):
 
     return X6, org6, x6, y6, z6
 
-def CGAIK(R6vec, degrees, config_params):
+def CGAIK():
     '''
     D-H params, base frame, target pose, and the configuration params
     '''
@@ -242,8 +247,8 @@ def CGAIK(R6vec, degrees, config_params):
     y0 = e2
     z0 = e3
 
-    X6, org6, x6, y6, z6 = TargetPose(R6vec, degrees)
-    kud, klr, kfn = RobotConfig(config_params)
+    X6, org6, x6, y6, z6 = TargetPose()
+    kud, klr, kfn = RobotConfig()
 
     '''
     Inverse kinematics of the robot-
@@ -287,7 +292,7 @@ def CGAIK(R6vec, degrees, config_params):
         
     if shoulder_singularity == False:
         # Vertical plane passing through Xc
-        Pc = no ^ e3 ^ Xc ^ ni
+        Pc = no ^ e3 ^ Xc ^ ni;
         # Pc shift to pass through X5
         Pc_ver = ( Pc.Dual() + (X5 | Pc.Dual()) * ni ).Dual()
         # Plane perp to Pc_ver and pass through X5
@@ -301,6 +306,11 @@ def CGAIK(R6vec, degrees, config_params):
         # Intersect the sphere and a line gives a point pair
         PP4 = L54.Dual() | S5
         PP4d = (PP4 | PP4) * ((PP4 ^ ni) | (PP4 ^ ni)).Inverse(); PP4d = PP4d[0] # point pair distance
+        # if PP4.Norm() > 10 ** (-5):
+        #     PP4d = (PP4 | PP4) * ((PP4 ^ ni) | (PP4 ^ ni)).Inverse(); PP4d = PP4d[0] # point pair distance
+        # else:
+        #     PP4d = 0 # point pair distance
+
         if PP4d > 0:
             # If the spheres intersect then we can just choose one solution. Extract each point in the point pair by method of projectors
             X4 = (1 + kfn * PP4 * (1 / sqrt((PP4 * PP4)[0]))) * (PP4 | ni); X4 = up(down(X4))
@@ -314,6 +324,7 @@ def CGAIK(R6vec, degrees, config_params):
         # Intersect the sphere and a line gives a point pair
         PP3 = L34.Dual() | S4
         PP3d = (PP3 | PP3) * ((PP3 ^ ni) | (PP3 ^ ni)).Inverse(); PP3d = PP3d[0] # point pair distance
+
         if PP3d > 0:
             # If the spheres intersect then we can just choose one solution. Extract each point in the point pair by method of projectors
             X3 = (1 + klr * PP3 * (1 / sqrt((PP3 * PP3)[0]))) * (PP3 | ni); X3 = up(down(X3)) 
@@ -329,6 +340,7 @@ def CGAIK(R6vec, degrees, config_params):
         # Intersect the circle and a plane gives a point pair
         PP2 = (-1) * Pc & C2; # grade-2 point pair
         PP2d = (PP2 | PP2) * ((PP2 ^ ni) | (PP2 ^ ni)).Inverse(); PP2d = PP2d[0] # point pair distance
+
         if PP2d > 0:
             # If the spheres intersect then we can just choose one solution. Extract each point in the point pair by method of projectors
             X2 = (1 + kud * PP2 * (1 / sqrt((PP2 * PP2)[0]))) * (PP2 | ni); X2 = up(down(X2))
@@ -340,8 +352,6 @@ def CGAIK(R6vec, degrees, config_params):
             X2 = up(down(X1) + a2 * (down(X3)- down(X1)).Normalized())
             reachable = "unreachable!"
 
-
-        
         if reachable == "reachable!":
             '''
             Inverse kinematics of the robot-
@@ -412,6 +422,7 @@ def CGAIK(R6vec, degrees, config_params):
         '''
         # Vertical plane passing through Xc
         Pc = no ^ y6 ^ x6 ^ ni
+
         PP4d = "N/A"
         PP3d = "N/A"
         PP2d = "N/A"
@@ -433,4 +444,22 @@ def CGAIK(R6vec, degrees, config_params):
         theta6 = 0
         joints = [theta1, theta2, theta3, theta4, theta5, theta6]
 
+    # testing pose
+    # Correct: 
+    # Wrong: 
     return kud, klr, kfn, PPcd, PP4d, PP3d, PP2d, reachable, X0, X1, X2, X3, X4, X5, X6, joints
+
+def main():
+    start_time = time() # [s]
+    kud, klr, kfn, PPcd, PP4d, PP3d, PP2d, reachable, X0, X1, X2, X3, X4, X5, X6, joints = CGAIK()
+    end_time = time() # [s]
+
+    print(f"\nRobot configuration = [{kud}, {klr}, {kfn}]")
+    print(f"\nPoint pair distances = [{PPcd}, {PP4d}, {PP3d}, {PP2d}]")
+    print(f"\nReachable or not: {reachable}")
+    print(f"\nFrame origins:\nX0 = {down(X0)},\nX1 = {down(X1)},\nX2 = {down(X2)},\nX3 = {down(X3)},\nX4 = {down(X4)},\nX5 = {down(X5)},\nX6 = {down(X6)},")
+    print(f"\njoints = {joints}")
+    print(f"\nComputing time = {(end_time - start_time) * 1000} [ms] or {1 / (end_time - start_time)} [Hz]")
+
+if __name__ == "__main__":
+    main()
