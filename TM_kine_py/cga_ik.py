@@ -17,11 +17,11 @@ https://www.sciencedirect.com/science/article/pii/S0094114X22001045
 '''
 
 '''
-Potential issues: 
-1) numerical robustness issue close to singularities
-2) second possibility of shoulder singularity is not yet considered
-3) wrist singularity is not yet considered
-4) some unsolvable problem by closed-form solution may be further passed to numerical solution pipeline
+Potential issues:
+1) Numerical robustness issue close to singularities
+2) Second possibility of shoulder singularity is not yet considered
+3) Wrist singularity is not yet considered
+4) Some unsolvable problem by closed-form solution may be further passed to numerical solution pipeline
 '''
 
 from math import pi, sqrt, atan2
@@ -222,7 +222,13 @@ def TargetPose(R6vec, degrees):
 
     return X6, org6, x6, y6, z6
 
-def CGAIK(R6vec, degrees, config_params):
+
+
+
+
+
+
+def CGAIK_CONFIG(R6vec, degrees, config_params):
     '''
     D-H params, base frame, target pose, and the configuration params
     '''
@@ -434,3 +440,482 @@ def CGAIK(R6vec, degrees, config_params):
         joints = [theta1, theta2, theta3, theta4, theta5, theta6]
 
     return kud, klr, kfn, PPcd, PP4d, PP3d, PP2d, reachable, X0, X1, X2, X3, X4, X5, X6, joints
+
+
+
+
+
+
+
+
+def CGAIK_ALL(R6vec, degrees):
+    '''
+    D-H params, base frame, target pose, and the configuration params
+    '''
+    alpha0, a0, d1, \
+    alpha1, a1, d2, \
+    alpha2, a2, d3, \
+    alpha3, a3, d4, \
+    alpha4, a4, d5, \
+    alpha5, a5, d6, \
+    cga_offset1, cga_offset2, cga_offset3, cga_offset4, cga_offset5, cga_offset6 = DHParamsandCGAOffsets()
+
+    # X0 or {0}-org
+    X0 = no
+    org0 = X0
+    # {0}-axes
+    x0 = e1
+    y0 = e2
+    z0 = e3
+
+    X6, org6, x6, y6, z6 = TargetPose(R6vec, degrees)
+    config_params = [[ 1,  1,  1],
+                     [-1,  1,  1],
+                     [ 1, -1,  1],
+                     [-1, -1,  1],
+                     [ 1,  1, -1],
+                     [-1,  1, -1],
+                     [ 1, -1, -1],
+                     [-1, -1, -1],
+                     ]
+    joints = []
+
+    for i in range(len(config_params)):
+        kud, klr, kfn = RobotConfig(config_params[i])
+
+        '''
+        Inverse kinematics of the robot-
+        Solving the null points (frame origines)
+        '''
+        ## X5 and X1 (trivial)
+        X5 = up(down(X6) - d6 * z6)
+        org5 = X5
+        X1 = up(down(X0) + d1 * e3)
+        org1 = X1
+
+
+        ## X3 and X4
+        # Intersect 2 spheres gives 1 circle
+        Sc = (X5 - 0.5 * (d4 ** 2) * ni).Dual() # grade-4 sphere
+        K0 = (no - (Sc.Dual() | no) * ni).Dual(); K0 = K0.Normalized() # grade-4 sphere
+        C5k = (Sc & K0).Normalized() # grade-3 circle
+        # Intersect the circle and a plane gives a point pair
+        PPc = (X5 ^ e1 ^ e2 ^ ni) & C5k
+        PPc = (-1) * PPc # grade-2 point pair
+        PPcd = (PPc | PPc) * ((PPc ^ ni) | (PPc ^ ni)).Inverse(); PPcd = PPcd[0] # point pair distance
+
+        # The square of the point pair describes if the spheres intersect
+        if PPcd > 0:
+            # If the spheres intersect then we can just choose one solution. Extract each point in the point pair by method of projectors
+            Xc = (1 + klr * PPc * ( 1 / sqrt((PPc * PPc)[0]) )) * (PPc | ni); Xc = up(down(Xc))
+            endpoint5 = X5
+            shoulder_singularity = False
+        else:
+            if X6[3] == (d1 + a2 + a3 + d5):
+                # Shoulder singularity (Xc = alpha * e3 for all alpha is real number. In this case, Xc lies in the rotational axis of joint 1)
+                # Still another possibility for shoulder singularity (wrist flipped), while it's rarely used so skipped for now!
+                endpoint5 = X5
+                Xc = up(down(X6) - (d6 - d4) * z6)
+                shoulder_singularity = True
+            else:
+                # If the sphere at origin vanishes (radius = 0), the point pair becomes a single point
+                endpoint5 = X5
+                Xc = no
+                shoulder_singularity = False
+            
+        if shoulder_singularity == False:
+            # Vertical plane passing through Xc
+            Pc = no ^ e3 ^ Xc ^ ni
+            # Pc shift to pass through X5
+            Pc_ver = ( Pc.Dual() + (X5 | Pc.Dual()) * ni ).Dual()
+            # Plane perp to Pc_ver and pass through X5
+            P56 = (X5 ^ X6).Dual() ^ ni
+            n56 = (-1) * ((P56 | no) | ni).Normalized()
+            Pc_hor = X5 ^ n56 ^ ni
+            # Line passing through X4 and X5
+            L54 = Pc_ver & Pc_hor;
+            # Sphere centred at X5 w/ radius d5
+            S5 = (X5 - 0.5 * (d5 ** 2) * ni).Dual(); S5 = S5.Normalized();
+            # Intersect the sphere and a line gives a point pair
+            PP4 = L54.Dual() | S5
+            PP4d = (PP4 | PP4) * ((PP4 ^ ni) | (PP4 ^ ni)).Inverse(); PP4d = PP4d[0] # point pair distance
+            if PP4d > 0:
+                # If the spheres intersect then we can just choose one solution. Extract each point in the point pair by method of projectors
+                X4 = (1 + kfn * PP4 * (1 / sqrt((PP4 * PP4)[0]))) * (PP4 | ni); X4 = up(down(X4))
+                endpoint4 = X4
+            else:
+                solvable = "unsolvable!"
+
+            # Sphere centred at X4 w/ radius d4
+            S4 = (X4 - 0.5 * (d4 ** 2) * ni).Dual(); S4 = S4.Normalized()
+            L34 = X4 ^ Pc.Dual() ^ ni
+            # Intersect the sphere and a line gives a point pair
+            PP3 = L34.Dual() | S4
+            PP3d = (PP3 | PP3) * ((PP3 ^ ni) | (PP3 ^ ni)).Inverse(); PP3d = PP3d[0] # point pair distance
+            if PP3d > 0:
+                # If the spheres intersect then we can just choose one solution. Extract each point in the point pair by method of projectors
+                X3 = (1 + klr * PP3 * (1 / sqrt((PP3 * PP3)[0]))) * (PP3 | ni); X3 = up(down(X3)) 
+                endpoint3 = X3
+            else:
+                solvable = "unsolvable!"
+
+            ## X2
+            # Spheres centred at X1 w/ radius a2 and centred at X3 w/ radius a3
+            S3 = (X3 - 0.5 * (a3 ** 2) * ni).Dual(); S3 = S3.Normalized() # grade-4 plane
+            S1 = (X1 - 0.5 * (a2 ** 2) * ni).Dual(); S1 = S1.Normalized() # grade-4 plane
+            C2 = (S1 & S3).Normalized() # grade-3 circle
+            # Intersect the circle and a plane gives a point pair
+            PP2 = (-1) * Pc & C2; # grade-2 point pair
+            PP2d = (PP2 | PP2) * ((PP2 ^ ni) | (PP2 ^ ni)).Inverse(); PP2d = PP2d[0] # point pair distance
+            if PP2d > 0:
+                # If the spheres intersect then we can just choose one solution. Extract each point in the point pair by method of projectors
+                X2 = (1 + kud * PP2 * (1 / sqrt((PP2 * PP2)[0]))) * (PP2 | ni); X2 = up(down(X2))
+                endpoint2 = X2
+                reachable = "reachable!"
+            else:
+                # If the spheres do not intersect then we will just reach for the object.
+                endpoint2 = up(down(X1) + (a2 + a3) * (down(X3)- down(X1)).Normalized())
+                X2 = up(down(X1) + a2 * (down(X3)- down(X1)).Normalized())
+                reachable = "unreachable!"
+
+
+            
+            if reachable == "reachable!":
+                '''
+                Inverse kinematics of the robot-
+                Forming geometric relations among the null points
+                '''
+                # Form lines
+                L01 = (no ^ e3 ^ ni).Normalized() # grade-3 line
+                L12 = (X1 ^ X2 ^ ni).Normalized() # grade-3 line
+                L23 = (X2 ^ X3 ^ ni).Normalized() # grade-3 line
+
+                # Solving the joint variables by defining the angle offsets for zero configuration, the vectors, and the bivectors
+                # Vectors and bivectors
+                ath1 =                    e2; ath1 = ath1.Normalized()
+                bth1 = klr * (1) * Pc.Dual(); bth1 = bth1.Normalized()
+                Nth1 =               e1 ^ e2; Nth1 = Nth1.Normalized()
+
+                ath2 =      L01 | (ni ^ no); ath2 = ath2.Normalized()
+                bth2 =      L12 | (ni ^ no); bth2 = bth2.Normalized()
+                Nth2 = klr * (Pc | no) | ni; Nth2 = Nth2.Normalized()
+
+                ath3 =      L12 | (ni ^ no); ath3 = ath3.Normalized()
+                bth3 =      L23 | (ni ^ no); bth3 = bth3.Normalized()
+                Nth3 = klr * (Pc | no) | ni; Nth3 = Nth3.Normalized()
+
+                ath4 =                    L23 | (ni ^ no); ath4 = ath4.Normalized()
+                bth4 = kfn * ( (-1) * (L54 | (ni ^ no)) ); bth4 = bth4.Normalized()
+                Nth4 =               klr * (Pc | no) | ni; Nth4 = Nth4.Normalized()
+
+                ath5 =                klr * (1) * Pc.Dual(); ath5 = ath5.Normalized()
+                bth5 =                            (-1) * z6; bth5 = bth5.Normalized()
+                Nth5 = kfn * ( (1) * L54.Dual() ^ no ) | ni; Nth5 = Nth5.Normalized()
+
+                # Still have rooms to be improved for calculating theta6
+                ath6 = kfn * ( (-1) * (L54 | (ni ^ no)) ); ath6 = ath6.Normalized() # y6 lies in vec_54 (L54 unit direction vector) as theta6 = 0
+                bth6 =                          (-1) * y6; bth6 = bth6.Normalized()
+                Nth6 =                          (1) * n56; Nth6 = Nth6.Normalized()
+
+                '''
+                The sign of the configuration params may vary, depending on different definition of the DUAL operator (different sign). Other kind of definition may lead to:
+                X3 = (1 - klr * PP3 * (1 / sqrt((PP3 * PP3)[0]))) * (PP3 | ni); X3 = up(down(X3))bth1 = klr * (-1) * Pc.Dual(); bth1 = bth1.Normalized()
+                ath5 =                klr * (-1) * Pc.Dual(); ath5 = ath5.Normalized()
+                Nth5 = kfn * ( (-1) * L54.Dual() ^ no ) | ni; Nth5 = Nth5.Normalized()
+                Nth6 =                         (-1) * n56; Nth6 = Nth6.Normalized()
+                '''
+
+
+                '''
+                Inverse kinematics of the robot-
+                Solving the joint variables
+                '''
+                theta1 = atan2( ( (ath1 ^ bth1) * Nth1.Inverse() )[0], (ath1 | bth1)[0] ) + cga_offset1; theta1 = constrained_angle(theta1) * r2d
+                theta2 = atan2( ( (ath2 ^ bth2) * Nth2.Inverse() )[0], (ath2 | bth2)[0] ) + cga_offset2; theta2 = constrained_angle(theta2) * r2d
+                theta3 = atan2( ( (ath3 ^ bth3) * Nth3.Inverse() )[0], (ath3 | bth3)[0] ) + cga_offset3; theta3 = constrained_angle(theta3) * r2d
+                theta4 = atan2( ( (ath4 ^ bth4) * Nth4.Inverse() )[0], (ath4 | bth4)[0] ) + cga_offset4; theta4 = constrained_angle(theta4) * r2d
+                theta5 = atan2( ( (ath5 ^ bth5) * Nth5.Inverse() )[0], (ath5 | bth5)[0] ) + cga_offset5; theta5 = constrained_angle(theta5) * r2d
+                theta6 = atan2( ( (ath6 ^ bth6) * Nth6.Inverse() )[0], (ath6 | bth6)[0] ) + cga_offset6; theta6 = constrained_angle(theta6) * r2d
+                joints.append([theta1, theta2, theta3, theta4, theta5, theta6])
+            
+            else:
+                joints.append("desired pose unsolvable (unreachable)")
+
+        
+        elif shoulder_singularity == True:
+            '''
+            Shoulder singularity (Xc = alpha * e3 for all alpha is real number. In this case, Xc lies in the rotational axis of joint 1)
+            Two possibilities, only one considered here
+            Another is rarely used and thus can be done in the future
+            '''
+            # Vertical plane passing through Xc
+            Pc = no ^ y6 ^ x6 ^ ni
+            PP4d = "N/A"
+            PP3d = "N/A"
+            PP2d = "N/A"
+            reachable = "reachable!"
+            X2 = up(down(X0) + (d1 + a2) * e3)
+            X3 = up(down(X0) + (d1 + a2 + a3) * e3)
+            X4 = up(down(X6) - d6 * z6 - d5 * e3)
+
+            # Vectors and bivectors
+            ath1 =                    e2; ath1 = ath1.Normalized()
+            bth1 = klr * (1) * Pc.Dual(); bth1 = bth1.Normalized()
+            Nth1 =               e1 ^ e2; Nth1 = Nth1.Normalized()
+
+            theta1 = atan2( ( (ath1 ^ bth1) * Nth1.Inverse() )[0], (ath1 | bth1)[0] ) + cga_offset1; theta1 = constrained_angle(theta1) * r2d
+            theta2 = 0
+            theta3 = 0
+            theta4 = 0
+            theta5 = 0
+            theta6 = 0
+            joints.append([theta1, theta2, theta3, theta4, theta5, theta6])
+
+    # return kud, klr, kfn, PPcd, PP4d, PP3d, PP2d, reachable, X0, X1, X2, X3, X4, X5, X6, joints
+    return joints
+
+
+
+
+
+def CGAIK_BEST(R6vec, degrees):
+    '''
+    D-H params, base frame, target pose, and the configuration params
+    '''
+    alpha0, a0, d1, \
+    alpha1, a1, d2, \
+    alpha2, a2, d3, \
+    alpha3, a3, d4, \
+    alpha4, a4, d5, \
+    alpha5, a5, d6, \
+    cga_offset1, cga_offset2, cga_offset3, cga_offset4, cga_offset5, cga_offset6 = DHParamsandCGAOffsets()
+    
+    cga_offsets = [cga_offset1, cga_offset2, cga_offset3, cga_offset4, cga_offset5, cga_offset6]
+
+    # X0 or {0}-org
+    X0 = no
+    org0 = X0
+    # {0}-axes
+    x0 = e1
+    y0 = e2
+    z0 = e3
+
+    X6, org6, x6, y6, z6 = TargetPose(R6vec, degrees)
+    config_params = [[ 1,  1,  1],
+                     [-1,  1,  1],
+                     [ 1, -1,  1],
+                     [-1, -1,  1],
+                     [ 1,  1, -1],
+                     [-1,  1, -1],
+                     [ 1, -1, -1],
+                     [-1, -1, -1],
+                     ]
+    joints = []
+
+    for i in range(len(config_params)):
+        kud, klr, kfn = RobotConfig(config_params[i])
+
+        '''
+        Inverse kinematics of the robot-
+        Solving the null points (frame origines)
+        '''
+        ## X5 and X1 (trivial)
+        X5 = up(down(X6) - d6 * z6)
+        org5 = X5
+        X1 = up(down(X0) + d1 * e3)
+        org1 = X1
+
+
+        ## X3 and X4
+        # Intersect 2 spheres gives 1 circle
+        Sc = (X5 - 0.5 * (d4 ** 2) * ni).Dual() # grade-4 sphere
+        K0 = (no - (Sc.Dual() | no) * ni).Dual(); K0 = K0.Normalized() # grade-4 sphere
+        C5k = (Sc & K0).Normalized() # grade-3 circle
+        # Intersect the circle and a plane gives a point pair
+        PPc = (X5 ^ e1 ^ e2 ^ ni) & C5k
+        PPc = (-1) * PPc # grade-2 point pair
+        PPcd = (PPc | PPc) * ((PPc ^ ni) | (PPc ^ ni)).Inverse(); PPcd = PPcd[0] # point pair distance
+
+        # The square of the point pair describes if the spheres intersect
+        if PPcd > 0:
+            # If the spheres intersect then we can just choose one solution. Extract each point in the point pair by method of projectors
+            Xc = (1 + klr * PPc * ( 1 / sqrt((PPc * PPc)[0]) )) * (PPc | ni); Xc = up(down(Xc))
+            endpoint5 = X5
+            shoulder_singularity = False
+        else:
+            if X6[3] == (d1 + a2 + a3 + d5):
+                # Shoulder singularity (Xc = alpha * e3 for all alpha is real number. In this case, Xc lies in the rotational axis of joint 1)
+                # Still another possibility for shoulder singularity (wrist flipped), while it's rarely used so skipped for now!
+                endpoint5 = X5
+                Xc = up(down(X6) - (d6 - d4) * z6)
+                shoulder_singularity = True
+            else:
+                # If the sphere at origin vanishes (radius = 0), the point pair becomes a single point
+                endpoint5 = X5
+                Xc = no
+                shoulder_singularity = False
+            
+        if shoulder_singularity == False:
+            # Vertical plane passing through Xc
+            Pc = no ^ e3 ^ Xc ^ ni
+            # Pc shift to pass through X5
+            Pc_ver = ( Pc.Dual() + (X5 | Pc.Dual()) * ni ).Dual()
+            # Plane perp to Pc_ver and pass through X5
+            P56 = (X5 ^ X6).Dual() ^ ni
+            n56 = (-1) * ((P56 | no) | ni).Normalized()
+            Pc_hor = X5 ^ n56 ^ ni
+            # Line passing through X4 and X5
+            L54 = Pc_ver & Pc_hor;
+            # Sphere centred at X5 w/ radius d5
+            S5 = (X5 - 0.5 * (d5 ** 2) * ni).Dual(); S5 = S5.Normalized();
+            # Intersect the sphere and a line gives a point pair
+            PP4 = L54.Dual() | S5
+            PP4d = (PP4 | PP4) * ((PP4 ^ ni) | (PP4 ^ ni)).Inverse(); PP4d = PP4d[0] # point pair distance
+            if PP4d > 0:
+                # If the spheres intersect then we can just choose one solution. Extract each point in the point pair by method of projectors
+                X4 = (1 + kfn * PP4 * (1 / sqrt((PP4 * PP4)[0]))) * (PP4 | ni); X4 = up(down(X4))
+                endpoint4 = X4
+            else:
+                solvable = "unsolvable!"
+
+            # Sphere centred at X4 w/ radius d4
+            S4 = (X4 - 0.5 * (d4 ** 2) * ni).Dual(); S4 = S4.Normalized()
+            L34 = X4 ^ Pc.Dual() ^ ni
+            # Intersect the sphere and a line gives a point pair
+            PP3 = L34.Dual() | S4
+            PP3d = (PP3 | PP3) * ((PP3 ^ ni) | (PP3 ^ ni)).Inverse(); PP3d = PP3d[0] # point pair distance
+            if PP3d > 0:
+                # If the spheres intersect then we can just choose one solution. Extract each point in the point pair by method of projectors
+                X3 = (1 + klr * PP3 * (1 / sqrt((PP3 * PP3)[0]))) * (PP3 | ni); X3 = up(down(X3)) 
+                endpoint3 = X3
+            else:
+                solvable = "unsolvable!"
+
+            ## X2
+            # Spheres centred at X1 w/ radius a2 and centred at X3 w/ radius a3
+            S3 = (X3 - 0.5 * (a3 ** 2) * ni).Dual(); S3 = S3.Normalized() # grade-4 plane
+            S1 = (X1 - 0.5 * (a2 ** 2) * ni).Dual(); S1 = S1.Normalized() # grade-4 plane
+            C2 = (S1 & S3).Normalized() # grade-3 circle
+            # Intersect the circle and a plane gives a point pair
+            PP2 = (-1) * Pc & C2; # grade-2 point pair
+            PP2d = (PP2 | PP2) * ((PP2 ^ ni) | (PP2 ^ ni)).Inverse(); PP2d = PP2d[0] # point pair distance
+            if PP2d > 0:
+                # If the spheres intersect then we can just choose one solution. Extract each point in the point pair by method of projectors
+                X2 = (1 + kud * PP2 * (1 / sqrt((PP2 * PP2)[0]))) * (PP2 | ni); X2 = up(down(X2))
+                endpoint2 = X2
+                reachable = "reachable!"
+            else:
+                # If the spheres do not intersect then we will just reach for the object.
+                endpoint2 = up(down(X1) + (a2 + a3) * (down(X3)- down(X1)).Normalized())
+                X2 = up(down(X1) + a2 * (down(X3)- down(X1)).Normalized())
+                reachable = "unreachable!"
+
+
+            
+            if reachable == "reachable!":
+                '''
+                Inverse kinematics of the robot-
+                Forming geometric relations among the null points
+                '''
+                # Form lines
+                L01 = (no ^ e3 ^ ni).Normalized() # grade-3 line
+                L12 = (X1 ^ X2 ^ ni).Normalized() # grade-3 line
+                L23 = (X2 ^ X3 ^ ni).Normalized() # grade-3 line
+
+                # Solving the joint variables by defining the angle offsets for zero configuration, the vectors, and the bivectors
+                # Vectors and bivectors
+                ath1 =                    e2; ath1 = ath1.Normalized()
+                bth1 = klr * (1) * Pc.Dual(); bth1 = bth1.Normalized()
+                Nth1 =               e1 ^ e2; Nth1 = Nth1.Normalized()
+
+                ath2 =      L01 | (ni ^ no); ath2 = ath2.Normalized()
+                bth2 =      L12 | (ni ^ no); bth2 = bth2.Normalized()
+                Nth2 = klr * (Pc | no) | ni; Nth2 = Nth2.Normalized()
+
+                ath3 =      L12 | (ni ^ no); ath3 = ath3.Normalized()
+                bth3 =      L23 | (ni ^ no); bth3 = bth3.Normalized()
+                Nth3 = klr * (Pc | no) | ni; Nth3 = Nth3.Normalized()
+
+                ath4 =                    L23 | (ni ^ no); ath4 = ath4.Normalized()
+                bth4 = kfn * ( (-1) * (L54 | (ni ^ no)) ); bth4 = bth4.Normalized()
+                Nth4 =               klr * (Pc | no) | ni; Nth4 = Nth4.Normalized()
+
+                ath5 =                klr * (1) * Pc.Dual(); ath5 = ath5.Normalized()
+                bth5 =                            (-1) * z6; bth5 = bth5.Normalized()
+                Nth5 = kfn * ( (1) * L54.Dual() ^ no ) | ni; Nth5 = Nth5.Normalized()
+
+                # Still have rooms to be improved for calculating theta6
+                ath6 = kfn * ( (-1) * (L54 | (ni ^ no)) ); ath6 = ath6.Normalized() # y6 lies in vec_54 (L54 unit direction vector) as theta6 = 0
+                bth6 =                          (-1) * y6; bth6 = bth6.Normalized()
+                Nth6 =                          (1) * n56; Nth6 = Nth6.Normalized()
+
+                '''
+                The sign of the configuration params may vary, depending on different definition of the DUAL operator (different sign). Other kind of definition may lead to:
+                X3 = (1 - klr * PP3 * (1 / sqrt((PP3 * PP3)[0]))) * (PP3 | ni); X3 = up(down(X3))bth1 = klr * (-1) * Pc.Dual(); bth1 = bth1.Normalized()
+                ath5 =                klr * (-1) * Pc.Dual(); ath5 = ath5.Normalized()
+                Nth5 = kfn * ( (-1) * L54.Dual() ^ no ) | ni; Nth5 = Nth5.Normalized()
+                Nth6 =                         (-1) * n56; Nth6 = Nth6.Normalized()
+                '''
+
+
+                '''
+                Inverse kinematics of the robot-
+                Solving the joint variables
+                '''
+                theta1 = atan2( ( (ath1 ^ bth1) * Nth1.Inverse() )[0], (ath1 | bth1)[0] ) + cga_offset1; theta1 = constrained_angle(theta1) * r2d
+                theta2 = atan2( ( (ath2 ^ bth2) * Nth2.Inverse() )[0], (ath2 | bth2)[0] ) + cga_offset2; theta2 = constrained_angle(theta2) * r2d
+                theta3 = atan2( ( (ath3 ^ bth3) * Nth3.Inverse() )[0], (ath3 | bth3)[0] ) + cga_offset3; theta3 = constrained_angle(theta3) * r2d
+                theta4 = atan2( ( (ath4 ^ bth4) * Nth4.Inverse() )[0], (ath4 | bth4)[0] ) + cga_offset4; theta4 = constrained_angle(theta4) * r2d
+                theta5 = atan2( ( (ath5 ^ bth5) * Nth5.Inverse() )[0], (ath5 | bth5)[0] ) + cga_offset5; theta5 = constrained_angle(theta5) * r2d
+                theta6 = atan2( ( (ath6 ^ bth6) * Nth6.Inverse() )[0], (ath6 | bth6)[0] ) + cga_offset6; theta6 = constrained_angle(theta6) * r2d
+                joints.append([theta1, theta2, theta3, theta4, theta5, theta6])
+            
+            else:
+                joints.append("desired pose unsolvable (unreachable)")
+
+        
+        elif shoulder_singularity == True:
+            '''
+            Shoulder singularity (Xc = alpha * e3 for all alpha is real number. In this case, Xc lies in the rotational axis of joint 1)
+            Two possibilities, only one considered here
+            Another is rarely used and thus can be done in the future
+            '''
+            # Vertical plane passing through Xc
+            Pc = no ^ y6 ^ x6 ^ ni
+            PP4d = "N/A"
+            PP3d = "N/A"
+            PP2d = "N/A"
+            reachable = "reachable!"
+            X2 = up(down(X0) + (d1 + a2) * e3)
+            X3 = up(down(X0) + (d1 + a2 + a3) * e3)
+            X4 = up(down(X6) - d6 * z6 - d5 * e3)
+
+            # Vectors and bivectors
+            ath1 =                    e2; ath1 = ath1.Normalized()
+            bth1 = klr * (1) * Pc.Dual(); bth1 = bth1.Normalized()
+            Nth1 =               e1 ^ e2; Nth1 = Nth1.Normalized()
+
+            theta1 = atan2( ( (ath1 ^ bth1) * Nth1.Inverse() )[0], (ath1 | bth1)[0] ) + cga_offset1; theta1 = constrained_angle(theta1) * r2d
+            theta2 = 0
+            theta3 = 0
+            theta4 = 0
+            theta5 = 0
+            theta6 = 0
+            joints.append([theta1, theta2, theta3, theta4, theta5, theta6])
+
+    # Select the best solution
+    diff_sum_min = 1e+5
+    index = 0
+    for i in range(len(config_params)):
+        diff_sum = 0
+        for j in range(6):
+            diff = joints[i][j] - cga_offsets[j]
+            while diff < -pi:
+                diff += 2. * pi
+            while diff > pi:
+                diff -= 2. * pi
+            diff_sum += abs(diff)
+        if diff_sum < diff_sum_min:
+            diff_sum_min = diff_sum
+            index = i
+    return joints[index]

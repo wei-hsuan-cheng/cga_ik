@@ -1,9 +1,8 @@
-# from time import time
 from timeit import timeit
 from math import pi, sqrt, atan2
 # import numpy as np
 # from scipy.spatial.transform import Rotation 
-from cga_ik import CGAIK, down, DHParamsandCGAOffsets
+from cga_ik import CGAIK_CONFIG, CGAIK_ALL, CGAIK_BEST, down, DHParamsandCGAOffsets
 
 ## Unit translform
 r2d = 180 / pi
@@ -20,20 +19,35 @@ def main():
     alpha5, a5, d6, \
     cga_offset1, cga_offset2, cga_offset3, cga_offset4, cga_offset5, cga_offset6 = DHParamsandCGAOffsets()
 
-    R6vec = [a3 + d5, d4, d1 + a2 - d6, 180, 45, 180] # [x, y, z, Rx, Ry, Rz]
+    # R6vec = [a3 + d5, d4, d1 + a2 - d6, pi, pi / 4, pi] # [x, y, z, Rx, Ry, Rz] [m] [rad]
+    # degrees = False
+    
+    R6vec = [a3 + d5, d4, d1 + a2 - d6, 180, 45, 180] # [x, y, z, Rx, Ry, Rz] [m] [deg]
     degrees = True
-    config_params = [1, -1, -1]
 
-    kud, klr, kfn, PPcd, PP4d, PP3d, PP2d, reachable, X0, X1, X2, X3, X4, X5, X6, joints = CGAIK(R6vec, degrees, config_params)
+    
+    config_params = [1, 1, -1]
+    kud, klr, kfn, PPcd, PP4d, PP3d, PP2d, reachable, X0, X1, X2, X3, X4, X5, X6, joints_config = CGAIK_CONFIG(R6vec, degrees, config_params)
+    
+    joints_all = CGAIK_ALL(R6vec, degrees)
+
+    joints_best = CGAIK_BEST(R6vec, degrees)
+
 
     # print(f"\nRobot configuration = [{kud}, {klr}, {kfn}]")
     # print(f"\nPoint pair distances = [{PPcd}, {PP4d}, {PP3d}, {PP2d}]")
     # print(f"\nReachable or not: {reachable}")
     # print(f"\nFrame origins:\nX0 = {down(X0)},\nX1 = {down(X1)},\nX2 = {down(X2)},\nX3 = {down(X3)},\nX4 = {down(X4)},\nX5 = {down(X5)},\nX6 = {down(X6)},")
-    # print(f"\njoints = {joints}")
+    
+    print(f"\njoints_config = {joints_config}")
+
+    for i in range(len(joints_all)):
+        print(f"\njoints[{i}] = {joints_all[i]}")
+    
+    print(f"\njoints_best = {joints_best}")
 
 if __name__ == "__main__":
-    # main()
-    # Measure the average time taken by main() function using timeit
-    avg_time = timeit(main, number = 1000) / 1000  # Run main() 1000 times
-    print(f"\nAverage computing time = {avg_time * 1000} [ms]")
+    main()
+    # loop_num = 100
+    # avg_time = timeit(main, number = loop_num) / loop_num  # Run main() various times
+    # print(f"\nAverage computing time = {avg_time * 1000} [ms]")

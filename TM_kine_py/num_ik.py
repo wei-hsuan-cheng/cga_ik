@@ -1,3 +1,4 @@
+from timeit import timeit
 from TM_kinematics.RobotSerial import *
 import numpy as np
 from math import pi
@@ -45,14 +46,16 @@ def main():
     # inverse
     # =====================================
 
-    xyz = np.array([[0.4175], [-0.1223], [0.3611]])
+    # xyz = np.array([[0.4175], [-0.1223], [0.3611]])
+    # abc = np.array([pi, pi / 4, pi])
+    xyz = np.array([[a3 + d5], [d4], [d1 + a2 - d6]])
     abc = np.array([pi, pi / 4, pi])
     end = Frame.from_euler_3(abc, xyz)
     robot.inverse(end)
 
-    print("inverse is successful: {0}".format(robot.is_reachable_inverse))
-    print("axis values: \n{0}".format(robot.axis_values))
-    robot.show()
+    # print("inverse is successful: {0}".format(robot.is_reachable_inverse))
+    # print("axis values: \n{0}".format(robot.axis_values))
+    # robot.show()
 
     # # example of unsuccessful inverse kinematics
     # xyz = np.array([[2.2], [0.], [1.9]])
@@ -63,4 +66,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    loop_num = 100
+    avg_time = timeit(main, number = loop_num) / loop_num  # Run main() various times
+    print(f"\nAverage computing time = {avg_time * 1000} [ms]")
