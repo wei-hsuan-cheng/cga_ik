@@ -227,7 +227,9 @@ def TargetPose(R6vec, degrees):
 
 
 
-
+'''
+IK for a given configuraiton
+'''
 def CGAIK_CONFIG(R6vec, degrees, config_params):
     '''
     D-H params, base frame, target pose, and the configuration params
@@ -446,8 +448,9 @@ def CGAIK_CONFIG(R6vec, degrees, config_params):
 
 
 
-
-
+'''
+IK for all configurations
+'''
 def CGAIK_ALL(R6vec, degrees):
     '''
     D-H params, base frame, target pose, and the configuration params
@@ -675,10 +678,10 @@ def CGAIK_ALL(R6vec, degrees):
     return joints
 
 
-
-
-
-def CGAIK_BEST(R6vec, degrees):
+'''
+Best IK solution (shortest path compared to previous joint position)
+'''
+def CGAIK_BEST(R6vec, joints_previous, degrees):
     '''
     D-H params, base frame, target pose, and the configuration params
     '''
@@ -689,8 +692,11 @@ def CGAIK_BEST(R6vec, degrees):
     alpha4, a4, d5, \
     alpha5, a5, d6, \
     cga_offset1, cga_offset2, cga_offset3, cga_offset4, cga_offset5, cga_offset6 = DHParamsandCGAOffsets()
-    
-    cga_offsets = [cga_offset1, cga_offset2, cga_offset3, cga_offset4, cga_offset5, cga_offset6]
+        
+    if len(joints_previous) != 6:
+        return "Dimension error (not 6D joint positions)"
+    elif np.linalg.norm(joints_previous - np.zeros((6,1))) < 10 ** (-4):
+        joints_previous = np.zeros((6,1))
 
     # X0 or {0}-org
     X0 = no
@@ -903,13 +909,13 @@ def CGAIK_BEST(R6vec, degrees):
             theta6 = 0
             joints.append([theta1, theta2, theta3, theta4, theta5, theta6])
 
-    # Select the best solution
+    # Select the best solution (shortest path compared to previous joint position)
     diff_sum_min = 1e+5
     index = 0
     for i in range(len(config_params)):
         diff_sum = 0
         for j in range(6):
-            diff = joints[i][j] - cga_offsets[j]
+            diff = joints[i][j] - joints_previous[j]
             while diff < -pi:
                 diff += 2. * pi
             while diff > pi:

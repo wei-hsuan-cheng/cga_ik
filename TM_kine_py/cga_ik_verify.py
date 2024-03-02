@@ -1,6 +1,6 @@
 from timeit import timeit
 from math import pi, sqrt, atan2
-# import numpy as np
+import numpy as np
 # from scipy.spatial.transform import Rotation 
 from cga_ik import CGAIK_CONFIG, CGAIK_ALL, CGAIK_BEST, down, DHParamsandCGAOffsets
 
@@ -21,29 +21,27 @@ def main():
 
     # R6vec = [a3 + d5, d4, d1 + a2 - d6, pi, pi / 4, pi] # [x, y, z, Rx, Ry, Rz] [m] [rad]
     # degrees = False
-    
     R6vec = [a3 + d5, d4, d1 + a2 - d6, 180, 45, 180] # [x, y, z, Rx, Ry, Rz] [m] [deg]
     degrees = True
 
     
-    config_params = [1, 1, -1]
-    kud, klr, kfn, PPcd, PP4d, PP3d, PP2d, reachable, X0, X1, X2, X3, X4, X5, X6, joints_config = CGAIK_CONFIG(R6vec, degrees, config_params)
-    
-    joints_all = CGAIK_ALL(R6vec, degrees)
-
-    joints_best = CGAIK_BEST(R6vec, degrees)
-
-
+    # config_params = [1, 1, -1]
+    # kud, klr, kfn, PPcd, PP4d, PP3d, PP2d, reachable, X0, X1, X2, X3, X4, X5, X6, joints_config = CGAIK_CONFIG(R6vec, degrees, config_params)
     # print(f"\nRobot configuration = [{kud}, {klr}, {kfn}]")
     # print(f"\nPoint pair distances = [{PPcd}, {PP4d}, {PP3d}, {PP2d}]")
     # print(f"\nReachable or not: {reachable}")
     # print(f"\nFrame origins:\nX0 = {down(X0)},\nX1 = {down(X1)},\nX2 = {down(X2)},\nX3 = {down(X3)},\nX4 = {down(X4)},\nX5 = {down(X5)},\nX6 = {down(X6)},")
+    # print(f"\njoints_config = {joints_config}")
     
-    print(f"\njoints_config = {joints_config}")
+    
+    # joints_all = CGAIK_ALL(R6vec, degrees)
+    # for i in range(len(joints_all)):
+    #     print(f"\njoints[{i}] = {joints_all[i]}")
 
-    for i in range(len(joints_all)):
-        print(f"\njoints[{i}] = {joints_all[i]}")
-    
+
+    # joints_previous = np.array([0, 0, 0, 0, 0, 0]) # zero-configuration
+    joints_previous = np.array([0, 0, 90, 0, 90, -90]) # IK starting pose
+    joints_best = CGAIK_BEST(R6vec, joints_previous, degrees)
     print(f"\njoints_best = {joints_best}")
 
 if __name__ == "__main__":
