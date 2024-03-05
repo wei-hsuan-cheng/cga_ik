@@ -34,15 +34,17 @@ def main():
     # print(f"\njoints_config = {joints_config}")
     
     
-    # joints_all = CGAIK_ALL(R6vec, degrees)
+    # joints_all, sol_num = CGAIK_ALL(R6vec, degrees)
     # for i in range(len(joints_all)):
     #     print(f"\njoints[{i}] = {joints_all[i]}")
+    # print(f"\nnumber of solutions = {sol_num}")
 
 
     # joints_previous = np.array([0, 0, 0, 0, 0, 0]) # zero-configuration
     joints_previous = np.array([0, 0, 90, 0, 90, -90]) # IK starting pose
-    joints_best = CGAIK_BEST(R6vec, joints_previous, degrees)
+    joints_best, sol_num = CGAIK_BEST(R6vec, joints_previous, degrees)
     print(f"\njoints_best = {joints_best}")
+    print(f"\nnumber of solutions = {sol_num}")
 
 if __name__ == "__main__":
     main()

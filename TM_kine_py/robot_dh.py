@@ -1,7 +1,7 @@
 # Craig version of D-H parameters
 
-# Reference robot: TM5-700, unit: [mm]
-# alpha{i-1}, a_{i-1}, d{i}, theta_offset{i}
+# # Reference robot: TM5-700, unit: [mm]
+# # alpha{i-1}, a_{i-1}, d{i}, theta_offset{i}
 # alpha0 =       0; a0 =            0; d1 =  145.2 * mm2m; theta_offset1 = 0
 # alpha1 = -pi / 2; a1 =            0; d2 =             0; theta_offset2 = 0 - pi / 2 
 # alpha2 =       0; a2 = 329.0 * mm2m; d3 =             0; theta_offset3 = 0
@@ -11,7 +11,7 @@
 # alpha6 =       0; a6 =            0;
 
 # # Reference robot: TM5-900, unit: [mm]
-# alpha{i-1}, a_{i-1}, d{i}, theta_offset{i}
+# # alpha{i-1}, a_{i-1}, d{i}, theta_offset{i}
 # alpha0 =       0; a0 =            0; d1 =  165.2 * mm2m; theta_offset1 = 0
 # alpha1 = -pi / 2; a1 =            0; d2 =             0; theta_offset2 = 0 - pi / 2 
 # alpha2 =       0; a2 = 536.1 * mm2m; d3 =             0; theta_offset3 = 0

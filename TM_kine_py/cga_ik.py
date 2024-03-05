@@ -674,8 +674,10 @@ def CGAIK_ALL(R6vec, degrees):
             theta6 = 0
             joints.append([theta1, theta2, theta3, theta4, theta5, theta6])
 
+    sol_num = len([p for p in joints if type(p) != float])
+    
     # return kud, klr, kfn, PPcd, PP4d, PP3d, PP2d, reachable, X0, X1, X2, X3, X4, X5, X6, joints
-    return joints
+    return joints, sol_num
 
 
 '''
@@ -912,7 +914,8 @@ def CGAIK_BEST(R6vec, joints_previous, degrees):
     # Select the best solution (shortest path compared to previous joint position)
     diff_sum_min = 1e+5
     index = 0
-    for i in range(len(config_params)):
+    sol_num = len([p for p in joints if type(p) != float])
+    for i in range(sol_num):
         diff_sum = 0
         for j in range(6):
             diff = joints[i][j] - joints_previous[j]
@@ -924,4 +927,4 @@ def CGAIK_BEST(R6vec, joints_previous, degrees):
         if diff_sum < diff_sum_min:
             diff_sum_min = diff_sum
             index = i
-    return joints[index]
+    return joints[index], sol_num
