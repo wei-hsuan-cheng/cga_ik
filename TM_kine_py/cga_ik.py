@@ -100,7 +100,7 @@ def Grade(vec_G41, k): # grade projection (for those component not of grade-k, s
 def rot(bivector, angle):
     if len(bivector) == 32 and (x == 0 for x in bivector[0:6]) and  (x == 0 for x in bivector[16:]):
         if type(angle) in (int, float, np.float64):
-            return float(np.cos(angle / 2)) - float(np.sin(angle / 2)) * bivector.Normalized()
+            return float(np.cos(angle / 2)) - float(np.sin(angle / 2)) * bivector.Normalized() # [rad]
         else:
             print(f"\nDimension error (angle has to be a scalar)")
     else:
@@ -133,13 +133,20 @@ def DHParamsandCGAOffsets():
     alpha3 =       0; a3 = 311.5 * mm2m; d4 = -122.3 * mm2m; # frame {3} -> {4}
     alpha4 = -pi / 2; a4 =            0; d5 =    106 * mm2m; # frame {4} -> {5}
     alpha5 = -pi / 2; a5 =            0; d6 = 113.15 * mm2m; # frame {5} -> {6}
-    # The cga_offset in cga_ik may be different from the cga_offset in D-H params since we calculate the angle between LINKS (check the link relation of TM zero config)
+    # The cga_offset in cga_ik may be different from the dh_offset in D-H params since we calculate the angle between LINKS (check the link relation of TM zero config)
     cga_offset1 = 0
     cga_offset2 = 0 
     cga_offset3 = 0 
     cga_offset4 = 0 
     cga_offset5 = 0
     cga_offset6 = pi
+    # Angle offsets in D-H params, dh_offsets [deg]
+    dh_offset1 = 0 
+    dh_offset2 = -pi / 2
+    dh_offset3 = 0 
+    dh_offset4 = -pi / 2
+    dh_offset5 = 0 
+    dh_offset6 = pi
     return alpha0, a0, d1, \
            alpha1, a1, d2, \
            alpha2, a2, d3, \

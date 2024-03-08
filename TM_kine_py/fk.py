@@ -83,7 +83,8 @@ def main():
     print("end frame angle-axis:")
     print(f.r_3)
 
-    robot.show()
+    robot.show(True,False)
+    # robot.show(True,True)
 
 
 if __name__ == "__main__":
