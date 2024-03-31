@@ -1,9 +1,11 @@
+'''
+Code originally adapted from: https://github.com/dbddqy/visual_kinematics
+'''
 from TM_kinematics.Frame import *
 from numpy import pi
 from abc import abstractmethod
 import matplotlib.pyplot as plt
 
-# This code is originally adapted from: https://github.com/dbddqy/visual_kinematics
 
 class Robot(object):
     # ================== Definition and Kinematics

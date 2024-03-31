@@ -1,8 +1,10 @@
+'''
+Code originally adapted from: https://github.com/dbddqy/visual_kinematics
+'''
 import numpy as np
 from scipy.spatial.transform import Rotation
 from math import sin as s, cos as c
 
-# This code is originally adapted from: https://github.com/dbddqy/visual_kinematics
 
 class Frame:
     def __init__(self, t_4_4):

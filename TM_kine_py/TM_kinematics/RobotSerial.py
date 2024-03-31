@@ -1,10 +1,11 @@
+'''
+Code originally adapted from: https://github.com/dbddqy/visual_kinematics
+'''
 import numpy as np
-
 from TM_kinematics.Robot import *
 from TM_kinematics.constrained_angle import simplify_angles
 import logging
 
-# This code is originally adapted from: https://github.com/dbddqy/visual_kinematics
 
 class RobotSerial(Robot):
     # ==================

@@ -1,5 +1,7 @@
+'''
+Code originally adapted from: https://github.com/dbddqy/visual_kinematics
+'''
 import numpy as np
-
 from TM_kinematics.Robot import *
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.widgets import Slider
