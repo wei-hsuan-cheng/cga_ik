@@ -129,7 +129,8 @@ private:
   void solve_ik() {
     // RM::PrintVec(target_pose_, "\ntarget_pose [m, rad]");
 
-    robot_config_ = cga_ik::setRobotConfig(1, -1, -1);
+    // robot_config_ = cga_ik::setRobotConfig(1, -1, -1);
+    robot_config_ = cga_ik::setRobotConfig(1, 1, 1);
     cga_ik::SolveNullPoints(target_pose_, dh_table_, robot_config_);
     
     if (cga_ik::reachable) {
