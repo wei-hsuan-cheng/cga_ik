@@ -1,4 +1,32 @@
 
+/*
+cga_ik, an inverse kinematics (IK) solver based on conformal geometric algebra (CGA)
+Written by wei-hsuan-cheng
+
+G41 structure: e1 * e1 = e2 * e2 = e3 * e3 = e4 * e4 = +1, e5 * e5 = -1
+Definition of DUAL here: M.Dual() = e12345 * M = M * e12345
+Null bases: ni = e5 + e4, no = 0.5 * (e5 - e4)
+
+Two singularities of the robot arm
+1) Shoulder singularity
+2) Wrist singularity
+
+References for this code:
+https://slides.com/hugohadfield/game2020
+https://www.mic-journal.no/ABS/MIC-2016-1-6.asp/
+https://www.sciencedirect.com/science/article/pii/S0094114X22001045
+*/
+
+/*
+Potential issues:
+1) Numerical robustness issue close to singularities
+2) Second possibility of shoulder singularity is not yet considered
+3) Wrist singularity is not yet considered
+4) Some unsolvable problem by closed-form solution may be further passed to numerical solution pipeline
+5) Elbow singularity is not yet considered
+*/
+
+
 #ifndef CGA_IK_HPP
 #define CGA_IK_HPP
 
