@@ -20,7 +20,7 @@ public:
   : Node("visualise_robot_tf"), t_(0.0), dh_table_(cga_ik::loadDHTable())
   {
     tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
-    timer_ = this->create_wall_timer(16ms, std::bind(&VisualiseRobotTF::visualise_robot_tf_callback_, this));
+    timer_ = this->create_wall_timer(10ms, std::bind(&VisualiseRobotTF::visualise_robot_tf_callback_, this));
 
     publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("joint_angles", 10);
     
@@ -94,7 +94,7 @@ private:
   }
 
   // Update the target pose in a time-varying way.
-  void get_target_pose()
+  void getTargetPose()
   {
     t_ += 1.0;  // Increase by one per callback
 
@@ -114,9 +114,10 @@ private:
     // double offset_thy = 0.1 * cos(2.0 * M_PI * 0.005 * t_); // [rad]
     // double offset_thz = 0.1 * sin(2.0 * M_PI * 0.006 * t_); // [rad]
 
-    double offset_x = 0.1 * cos(2.0 * M_PI * 0.003 * t_); // [m]
+    double f_motion = 0.001;
+    double offset_x = 0.1 * cos(2.0 * M_PI * f_motion * t_); // [m]
     double offset_y = 0.0; // [m]
-    double offset_z = 0.1 * sin(2.0 * M_PI * 0.003 * t_); // [m]
+    double offset_z = 0.1 * sin(2.0 * M_PI * f_motion * t_); // [m]
     double offset_thx = 0.0; // [rad]
     double offset_thy = 0.0; // [rad]
     double offset_thz = 0.0; // [rad]
@@ -128,7 +129,7 @@ private:
 
   }
 
-  void solve_ik() {
+  void solveIK() {
     // Different robot configurations (elbow up/down, shoulder left/right, wrist not flipped/flipped)
     robot_config_ = cga_ik::setRobotConfig(1, 1, 1);
     // robot_config_ = cga_ik::setRobotConfig(1, -1, -1);
@@ -166,7 +167,7 @@ private:
   }
   
   // Publish transforms for base, each joint, and the end-effector.
-  void publish_transforms()
+  void publishTF()
   {
     // Publish joint angles
     auto message = std_msgs::msg::Float64MultiArray();
@@ -178,7 +179,7 @@ private:
     geometry_msgs::msg::TransformStamped tf_msg;
     tf_msg.header.stamp = this->get_clock()->now();
     tf_msg.header.frame_id = "world";
-    tf_msg.child_frame_id = "base";
+    tf_msg.child_frame_id = "cga_ik_base";
     tf_msg.transform.translation.x = 0.0;
     tf_msg.transform.translation.y = 0.0;
     tf_msg.transform.translation.z = 0.0;
@@ -198,8 +199,8 @@ private:
       
       PosQuat transform = dh_transform(alpha, a, d, theta);
       
-      std::string child_frame = "j" + std::to_string(i + 1);
-      std::string parent_frame = (i == 0) ? "base" : "j" + std::to_string(i);
+      std::string child_frame = "cga_ik_j" + std::to_string(i + 1);
+      std::string parent_frame = (i == 0) ? "cga_ik_base" : "cga_ik_j" + std::to_string(i);
       publish_tf(transform, child_frame, parent_frame);
     }
 
@@ -208,18 +209,21 @@ private:
 
     // Compare FK and IK
     Vector6d pose_res = RM::R6Poses2RelativeR6Pose(target_pose_, resulting_pose_);
-    RCLCPP_INFO(this->get_logger(), 
+    // If residual pose > 1e-3, print the residual pose.
+    if (pose_res.head(3).norm() * 1e3 > 1e-2 || pose_res.tail(3).norm() * RM::r2d > 1e-2)
+    {
+      RCLCPP_INFO(this->get_logger(), 
       "Residual pose [m, rad] = %.4f, %.4f, %.4f, %.4f, %.4f, %.4f", 
       pose_res(0), pose_res(1), pose_res(2), pose_res(3), pose_res(4), pose_res(5)
       );
+    }
+    
+    publish_tf(RM::R6Pose2PosQuat(resulting_pose_), "cga_fk_j6", "cga_ik_base");
 
-    publish_tf(RM::R6Pose2PosQuat(target_pose_), "j6_ik", "base");
-    publish_tf(RM::R6Pose2PosQuat(resulting_pose_), "j6_fk", "base");
-
-    // Publish the end-effector (E) transform.
+    // Publish the tool (tcp) transform.
     // For example, we set a fixed transform for E relative to joint 6.
     PosQuat pos_quat_6_e = RM::R6Pose2PosQuat(Vector6d(0, 0, 0.2315, 0, 0, 0));
-    publish_tf(pos_quat_6_e, "tcp", "j6"); 
+    publish_tf(pos_quat_6_e, "cga_ik_tcp", "cga_ik_j6"); 
 
   }
   
@@ -227,15 +231,21 @@ private:
   void visualise_robot_tf_callback_()
   {
     auto start = std::chrono::steady_clock::now();
-    get_target_pose();
-    solve_ik();
+
+    // Get IK target pose
+    getTargetPose();
+
+    // Solve IK (joint angles)
+    solveIK();
+
     auto end = std::chrono::steady_clock::now();
     double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
     double frequency = (elapsed_ms > 0.0) ? 1000.0 / elapsed_ms : 0.0;
-    RCLCPP_INFO(this->get_logger(), "dt = %.2f [ms], f = %.2f [Hz]", elapsed_ms, frequency);
+    RCLCPP_INFO(this->get_logger(), "Ts = %.2f [ms], fs = %.2f [Hz]", elapsed_ms, frequency);
 
+    // Publish TFs
+    publishTF();
 
-    publish_transforms();
   }
 
 };
