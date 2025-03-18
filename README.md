@@ -1,4 +1,4 @@
-# CGAIK
+# CGAIK (This page is actively being edited)
 
 Closed-form geometric inverse kinematics (IK) solver based on conformal geometric algebra (CGA), a powerful mathematical framework for representing geometry. 
 
