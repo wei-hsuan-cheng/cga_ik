@@ -60,13 +60,17 @@ install(TARGETS
   cga_ik_validate
   visualise_robot_tf
   
-
   DESTINATION lib/${PROJECT_NAME}
 )
 
 install(DIRECTORY
   include/
   DESTINATION include/
+)
+
+install(
+  DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
 )
 
 # Linting and testing
