@@ -129,7 +129,7 @@ private:
   }
 
   void solve_ik() {
-    // Different robot configurations
+    // Different robot configurations (elbow up/down, shoulder left/right, wrist not flipped/flipped)
     robot_config_ = cga_ik::setRobotConfig(1, 1, 1);
     // robot_config_ = cga_ik::setRobotConfig(1, -1, -1);
     // robot_config_ = cga_ik::setRobotConfig(1, 1, -1);
@@ -218,8 +218,8 @@ private:
 
     // Publish the end-effector (E) transform.
     // For example, we set a fixed transform for E relative to joint 6.
-    PosQuat pos_quat_6_e = RM::R6Pose2PosQuat(Vector6d(0, 0, 100 * mm2m, 0, 0, 0));
-    publish_tf(pos_quat_6_e, "E", "j6"); 
+    PosQuat pos_quat_6_e = RM::R6Pose2PosQuat(Vector6d(0, 0, 0.2315, 0, 0, 0));
+    publish_tf(pos_quat_6_e, "tcp", "j6"); 
 
   }
   
