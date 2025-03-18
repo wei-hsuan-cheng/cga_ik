@@ -1,0 +1,9 @@
+# Default initial positions for tm5x-700's ros2_control fake system
+
+initial_positions:
+  joint_1: 0
+  joint_2: 0.33
+  joint_3: -1.693
+  joint_4: -0.201
+  joint_5: -1.57
+  joint_6: 0

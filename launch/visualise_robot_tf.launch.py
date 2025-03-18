@@ -23,40 +23,20 @@ def generate_launch_description():
     
     pose_f_tcp_params = load_yaml_file_absolute_path(sup_tms_params).get("pose_f_tcp_params", {})
     
-    controllers_configs = PathJoinSubstitution(
-        [FindPackageShare("hm_tm5-700_moveit_config"), "config", "ros2_controllers.yaml"]
-    )
+    urdf_path = os.path.join(get_package_share_directory("cga_ik"), "config", "tm5-700.urdf.xacro")
 
-    # pkg_name = 'urdf_example'
-    # file_subpath = 'description/example_robot.urdf.xacro'
-    # xacro_file = os.path.join(get_package_share_directory(pkg_name), file_subpath)
-    # robot_description = xacro.process_file(xacro_file).toxml()
-    
-    
-    # robot_description_content = Command(
-    #     [
-    #         PathJoinSubstitution([FindExecutable(name="xacro")]),
-    #         " ",
-    #         PathJoinSubstitution(
-    #             [FindPackageShare("hm_tm5-700_moveit_config"), "config", "tm5-700.urdf.xacro"]
-    #         ),
-    #     ]
-    # )
-    
+    if not os.path.exists(urdf_path):
+        raise FileNotFoundError(f"URDF file not found at {urdf_path}")
     
     robot_description_content = Command(
         [
             PathJoinSubstitution([FindExecutable(name="xacro")]),
             " ",
-            PathJoinSubstitution(
-                [FindPackageShare("hm_tm5-700_moveit_config"), "config", "tm5-700.urdf.xacro"]
-            ),
+            urdf_path,
             " ",
-            "controller_configs:=",
-            controllers_configs,
         ]
     )
-    
+
     robot_description = {"robot_description": robot_description_content}
     
     visualise_robot_tf_node = Node(
@@ -66,13 +46,6 @@ def generate_launch_description():
         output="screen",
         parameters=[pose_f_tcp_params],
     )
-    
-    # node_robot_state_publisher = Node(
-    #     package='robot_state_publisher',
-    #     executable='robot_state_publisher',
-    #     output='screen',
-    #     parameters=[{'robot_description': robot_description}] # add other parameters here if required
-    # )
     
     robot_state_publisher_node = Node(
         package="robot_state_publisher",

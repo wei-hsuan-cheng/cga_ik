@@ -2,6 +2,8 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
+#include <sensor_msgs/msg/joint_state.hpp>
+
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <chrono>
@@ -22,7 +24,9 @@ public:
     tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
     timer_ = this->create_wall_timer(10ms, std::bind(&VisualiseRobotTF::visualise_robot_tf_callback_, this));
 
-    publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("joint_angles", 10);
+    cga_ik_joint_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/visualise_robot_tf/joint_states", 10);
+    joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
+
     
     // Initialization
     update_tcp_params();
@@ -33,7 +37,8 @@ private:
   
   std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::TimerBase::SharedPtr timer_;
-  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr publisher_;
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr cga_ik_joint_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
 
   // DH table and joint angles.
   DHTable dh_table_;
@@ -200,7 +205,15 @@ private:
     auto message = std_msgs::msg::Float64MultiArray();
     std::vector<double> angles(joint_angles_.data(), joint_angles_.data() + joint_angles_.size());
     message.data = angles;
-    publisher_->publish(message);
+    cga_ik_joint_pub_->publish(message);
+
+    // Joint state publisher
+    sensor_msgs::msg::JointState joint_state;
+    joint_state.header.stamp = this->get_clock()->now();
+    joint_state.name = {"joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"};
+    joint_state.position = {joint_angles_(0), joint_angles_(1), joint_angles_(2),
+                            joint_angles_(3), joint_angles_(4), joint_angles_(5)};
+    joint_state_pub_->publish(joint_state);
 
     // Publish the base transform (world -> base) as identity.
     geometry_msgs::msg::TransformStamped tf_msg;
@@ -208,7 +221,7 @@ private:
     tf_msg.header.frame_id = "world";
     tf_msg.child_frame_id = "cga_ik_base";
     tf_msg.transform.translation.x = 0.0;
-    tf_msg.transform.translation.y = -0.5;
+    tf_msg.transform.translation.y = -0.0;
     tf_msg.transform.translation.z = 0.0;
     tf_msg.transform.rotation.w = 1.0;
     tf_msg.transform.rotation.x = 0.0;

@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="tm5-700">
+    <xacro:arg name="sim" default="false"/>
+    <xacro:arg name="controller_configs" default=""/>
+    <xacro:arg name="ns" default="" />
+    <xacro:arg name="prefix" default="" />
+    <xacro:arg name="color" default="none" />
+    <xacro:arg name="trans_hw_iface" default="hardware_interface/PositionJointInterface" />
+
+
+    <xacro:arg name="initial_positions_file" default="$(find cga_ik)/config/initial_positions.yaml" />
+
+    <!-- Import xacro components -->
+
+    <!-- Import tm5-700 urdf file -->
+    <!-- <xacro:include filename="$(find tm_description)/xacro/macro.gazebo.xacro" /> -->
+    <xacro:include filename="$(find tm_description)/xacro/macro.transmission.xacro" />
+    <xacro:include filename="$(find tm_description)/xacro/macro.materials.xacro" />
+    <!-- tm5-700 -->
+    <!-- If the user want to use newly generated named robot description file as user_defined.urdf.xacro, -->
+    <!-- you must modify 'macro.tm5-700-nominal.urdf.xacro' to 'user_defined.urdf.xacro'  -->
+    <!-- <xacro:include filename="$(find tm_description)/xacro/macro.tm5-700-nominal.urdf.xacro" /> -->
+    <xacro:include filename="$(find tm_description)/xacro/macro.tm5-700-nominal-pkg.urdf.xacro" />
+    <!-- <xacro:include filename="$(find tm_description)/xacro/tm5-700.urdf.xacro" /> -->
+
+    <!-- Include xacro components -->
+
+    <link name="world" />
+
+    <xacro:tmr_transmission prefix="$(arg prefix)" hw_iface="$(arg trans_hw_iface)" />
+    <xacro:tmr_materials/>
+    <!-- Arm -->
+    <xacro:property name="color" value="$(arg color)"/>
+    <xacro:if value="${color == 'none'}">
+      <xacro:tm5-700 ns="$(arg ns)" prefix="$(arg prefix)" />
+    </xacro:if>
+    <!-- Arm.color.stl -->
+    <xacro:unless value="${color == 'none'}">
+      <xacro:tm5-700 ns="$(arg ns)" prefix="$(arg prefix)" color="${color}" format="stl" />
+    </xacro:unless>
+
+    <!-- If Arm is fixed to world -->
+    <joint name="base_joint" type="fixed">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <parent link="world" />
+      <child link="base" />
+      <axis xyz="0 0 0" />
+    </joint>
+
+
+    <!-- Define the tcp link -->
+    <link name="tcp"/>
+    <joint name="flange_to_tcp_joint" type="fixed">
+      <parent link="flange"/>
+      <child link="tcp"/>
+      <origin xyz="0 0 0.2315" rpy="0 0 1.5708"/>
+    </joint>
+
+    
+    
+
+</robot>
+
+

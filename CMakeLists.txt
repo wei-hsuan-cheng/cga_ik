@@ -19,6 +19,17 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(sensor_msgs REQUIRED)
+
+
+# Dependencies list
+set(dependencies
+    ament_cmake
+    rclcpp
+    Eigen3
+    tf2_ros
+    sensor_msgs
+)
 
 # Include directories
 include_directories(
@@ -37,22 +48,9 @@ add_executable(cga_ik_validate ${CGA_IK_VALIDATION_SOURCES})
 add_executable(visualise_robot_tf ${VISUALISE_ROBOT_TF_SOURCES})
 
 # Link libraries
-ament_target_dependencies(cga_test
-  rclcpp
-  Eigen3
-)
-
-ament_target_dependencies(cga_ik_validate
-  rclcpp
-  Eigen3
-)
-
-ament_target_dependencies(visualise_robot_tf
-  rclcpp
-  Eigen3
-  tf2_ros
-)
-
+ament_target_dependencies(cga_test ${dependencies})
+ament_target_dependencies(cga_ik_validate ${dependencies})
+ament_target_dependencies(visualise_robot_tf ${dependencies})
 
 # Install targets
 install(TARGETS
@@ -69,7 +67,7 @@ install(DIRECTORY
 )
 
 install(
-  DIRECTORY launch
+  DIRECTORY launch config
   DESTINATION share/${PROJECT_NAME}
 )
 
