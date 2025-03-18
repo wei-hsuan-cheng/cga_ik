@@ -25,10 +25,8 @@ public:
     publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("joint_angles", 10);
     
     // Initialization
-    target_pose_ = Vector6d(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-    robot_config_ = cga_ik::setRobotConfig(1, 1, 1);
-    joint_angles_ = Vector6d(0.0, 0.0, 90.0, 0.0, 90.0, -90.0) * RM::d2r;
-    resulting_pose_ = Vector6d(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    update_tcp_params();
+    updateIKParams();
   }
 
 private:
@@ -45,8 +43,31 @@ private:
   Vector6d resulting_pose_;
   double t_;
 
+  // TCP parameters
+  PosQuat pos_quat_f_tcp_;
+
   // Define conversion factors.
   const double mm2m = 1e-3;
+  const double m2mm = 1e3;
+
+  void update_tcp_params()
+  {
+    // Load pos_quat_f_tcp_ from yaml file
+    // Declare default parameters (in case the YAML file doesn't provide them)
+    this->declare_parameter<std::vector<double>>("pose_f_tcp_translation", {0.0, 0.0, 0.0});
+    this->declare_parameter<double>("pose_f_tcp_rotation_z", 0.0);
+
+    // Retrieve the parameters
+    std::vector<double> translation;
+    double rotation_z;
+    this->get_parameter("pose_f_tcp_translation", translation);
+    this->get_parameter("pose_f_tcp_rotation_z", rotation_z);
+    pos_quat_f_tcp_ = PosQuat(Vector3d(translation[0], translation[1], translation[2]), 
+                              RM::Quatz(rotation_z));
+
+    std::cout << "[VisualiseRobotTF] Loaded params from yaml file" << std::endl;
+    std::cout << "pos_quat_f_tcp_: " << pos_quat_f_tcp_.pos.transpose() << ", " << pos_quat_f_tcp_.quat.w() << ", " << pos_quat_f_tcp_.quat.x() << ", " << pos_quat_f_tcp_.quat.y() << ", " << pos_quat_f_tcp_.quat.z() << std::endl;
+  }
 
   // Helper function to compute the D-H transformation
   PosQuat dh_transform(double alpha, double a, double d, double theta)
@@ -76,7 +97,7 @@ private:
 
   
   // Helper function to publish a transform.
-  void publish_tf(const PosQuat& pos_quat, const std::string& child_frame_id, const std::string& parent_frame_id)
+  void publishTF(const PosQuat& pos_quat, const std::string& child_frame_id, const std::string& parent_frame_id)
   {
     geometry_msgs::msg::TransformStamped tf_msg;
     tf_msg.header.stamp = this->get_clock()->now();
@@ -93,7 +114,14 @@ private:
     tf_broadcaster_->sendTransform(tf_msg);
   }
 
-  // Update the target pose in a time-varying way.
+  void updateIKParams()
+  {
+    target_pose_ = Vector6d(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    robot_config_ = cga_ik::setRobotConfig(1, 1, 1);
+    joint_angles_ = Vector6d(0.0, 0.0, 90.0, 0.0, 90.0, -90.0) * RM::d2r;
+    resulting_pose_ = Vector6d(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+  }
+
   void getTargetPose()
   {
     t_ += 1.0;  // Increase by one per callback
@@ -148,7 +176,6 @@ private:
     }
   }
 
-  // Update the joint angles in a time-varying way.
   void time_varying_joint_angles()
   {
     t_ += 1.0;  // Increase by one per callback (like the Python counter)
@@ -166,8 +193,8 @@ private:
     joint_angles_ = new_angles + offset;
   }
   
-  // Publish transforms for base, each joint, and the end-effector.
-  void publishTF()
+  // Publish transforms for base, each joint, and the tool.
+  void publishAllTransforms()
   {
     // Publish joint angles
     auto message = std_msgs::msg::Float64MultiArray();
@@ -181,7 +208,7 @@ private:
     tf_msg.header.frame_id = "world";
     tf_msg.child_frame_id = "cga_ik_base";
     tf_msg.transform.translation.x = 0.0;
-    tf_msg.transform.translation.y = 0.0;
+    tf_msg.transform.translation.y = -0.5;
     tf_msg.transform.translation.z = 0.0;
     tf_msg.transform.rotation.w = 1.0;
     tf_msg.transform.rotation.x = 0.0;
@@ -201,7 +228,7 @@ private:
       
       std::string child_frame = "cga_ik_j" + std::to_string(i + 1);
       std::string parent_frame = (i == 0) ? "cga_ik_base" : "cga_ik_j" + std::to_string(i);
-      publish_tf(transform, child_frame, parent_frame);
+      publishTF(transform, child_frame, parent_frame);
     }
 
     // CGA FK
@@ -209,21 +236,20 @@ private:
 
     // Compare FK and IK
     Vector6d pose_res = RM::R6Poses2RelativeR6Pose(target_pose_, resulting_pose_);
-    // If residual pose > 1e-3, print the residual pose.
-    if (pose_res.head(3).norm() * 1e3 > 1e-2 || pose_res.tail(3).norm() * RM::r2d > 1e-2)
+    // If residual pose > certian threshold, print the residual pose.
+    if (pose_res.head(3).norm() * m2mm > 1e-2 || pose_res.tail(3).norm() * RM::r2d > 1e-2)
     {
       RCLCPP_INFO(this->get_logger(), 
       "Residual pose [m, rad] = %.4f, %.4f, %.4f, %.4f, %.4f, %.4f", 
-      pose_res(0), pose_res(1), pose_res(2), pose_res(3), pose_res(4), pose_res(5)
-      );
+      pose_res(0), pose_res(1), pose_res(2), pose_res(3), pose_res(4), pose_res(5));
     }
-    
-    publish_tf(RM::R6Pose2PosQuat(resulting_pose_), "cga_fk_j6", "cga_ik_base");
+    publishTF(RM::R6Pose2PosQuat(resulting_pose_), "cga_fk_j6", "cga_ik_base");
 
-    // Publish the tool (tcp) transform.
-    // For example, we set a fixed transform for E relative to joint 6.
-    PosQuat pos_quat_6_e = RM::R6Pose2PosQuat(Vector6d(0, 0, 0.2315, 0, 0, 0));
-    publish_tf(pos_quat_6_e, "cga_ik_tcp", "cga_ik_j6"); 
+    // Publish the flange and tool (tcp) transform.
+    PosQuat pos_quat_6_f = RM::R6Pose2PosQuat(Vector6d::Zero());
+    publishTF(pos_quat_6_f, "cga_ik_flange", "cga_ik_j6"); 
+
+    publishTF(pos_quat_f_tcp_, "cga_ik_tcp", "cga_ik_flange"); 
 
   }
   
@@ -244,7 +270,7 @@ private:
     RCLCPP_INFO(this->get_logger(), "Ts = %.2f [ms], fs = %.2f [Hz]", elapsed_ms, frequency);
 
     // Publish TFs
-    publishTF();
+    publishAllTransforms();
 
   }
 
