@@ -2,6 +2,7 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
+#include "geometry_msgs/msg/quaternion.hpp"
 #include <sensor_msgs/msg/joint_state.hpp>
 
 #include <Eigen/Dense>
@@ -9,7 +10,7 @@
 #include <chrono>
 #include <memory>
 
-#include "robot_math_utils/robot_math_utils_v1_8.hpp"
+#include "robot_math_utils/robot_math_utils_v1_9.hpp"
 #include "cga_ik/cga_ik.hpp"
 
 using namespace std::chrono_literals;
@@ -22,14 +23,22 @@ public:
   : Node("visualise_robot_tf"), t_(0.0), dh_table_(cga_ik::loadDHTable())
   {
     tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
-    timer_ = this->create_wall_timer(10ms, std::bind(&VisualiseRobotTF::visualise_robot_tf_callback_, this));
+    timer_ = this->create_wall_timer(
+      std::chrono::milliseconds(static_cast<int>(Ts_ * 1000)),
+      std::bind(&VisualiseRobotTF::visualise_robot_tf_callback_, this)
+    );
+
+    quat_sub_ = this->create_subscription<geometry_msgs::msg::Quaternion>(
+      "/mpu6050_imu/quat", 10,
+      std::bind(&VisualiseRobotTF::quat_callback_, this, std::placeholders::_1));
 
     cga_ik_joint_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/visualise_robot_tf/joint_states", 10);
     joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
-
     
     // Initialization
-    update_tcp_params();
+    updateSamplingParams();
+    updateControlParams();
+    updateTCPParams();
     updateIKParams();
   }
 
@@ -37,8 +46,15 @@ private:
   
   std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::Subscription<geometry_msgs::msg::Quaternion>::SharedPtr quat_sub_;
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr cga_ik_joint_pub_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
+
+  // Sampling rate and period
+  float fs_, Ts_;
+
+  // Controller params
+  Quaterniond quat_cmd_;
 
   // DH table and joint angles.
   DHTable dh_table_;
@@ -55,7 +71,25 @@ private:
   const double mm2m = 1e-3;
   const double m2mm = 1e3;
 
-  void update_tcp_params()
+  // Subscriber callbacks
+  void quat_callback_(const geometry_msgs::msg::Quaternion::SharedPtr msg)
+  {
+    quat_cmd_ = Quaterniond(msg->w, msg->x, msg->y, msg->z);
+    // std::cout << "quat_cmd_ = " << quat_cmd_.w() << ", " << quat_cmd_.x() << ", " << quat_cmd_.y() << ", " << quat_cmd_.z() << std::endl;
+  }
+
+  void updateSamplingParams() 
+  {
+    fs_ = 60.0;
+    Ts_ = 1.0 / fs_;
+  }
+
+  void updateControlParams()
+  {
+    quat_cmd_ = Quaterniond::Identity();
+  }
+
+  void updateTCPParams()
   {
     // Load pos_quat_f_tcp_ from yaml file
     // Declare default parameters (in case the YAML file doesn't provide them)
@@ -140,13 +174,6 @@ private:
 
     target_pose_ = Vector6d(a3 + d5, d4, d1 + a2 - d6, M_PI, M_PI / 4.0, M_PI);
 
-    // double offset_x = 0.1 * sin(2.0 * M_PI * 0.001 * t_); // [m]
-    // double offset_y = 0.1 * cos(2.0 * M_PI * 0.002 * t_); // [m]
-    // double offset_z = 0.1 * sin(2.0 * M_PI * 0.003 * t_); // [m]
-    // double offset_thx = 0.1 * sin(2.0 * M_PI * 0.004 * t_); // [rad]
-    // double offset_thy = 0.1 * cos(2.0 * M_PI * 0.005 * t_); // [rad]
-    // double offset_thz = 0.1 * sin(2.0 * M_PI * 0.006 * t_); // [rad]
-
     double f_motion = 0.001;
     double offset_x = 0.1 * cos(2.0 * M_PI * f_motion * t_); // [m]
     double offset_y = 0.0; // [m]
@@ -155,8 +182,29 @@ private:
     double offset_thy = 0.0; // [rad]
     double offset_thz = 0.0; // [rad]
 
-    Vector6d offset(offset_x, offset_y, offset_z, offset_thx, offset_thy, offset_thz);
-    target_pose_ += offset;
+    Vector6d pose_offset(offset_x, offset_y, offset_z, offset_thx, offset_thy, offset_thz);
+    target_pose_ += pose_offset;
+
+    // RM::PrintVec(target_pose_, "\ntarget_pose [m, rad]");
+
+  }
+
+  void getPoseCommand()
+  {
+    double d1 = dh_table_.dh_table(0, 2);
+    double a2 = dh_table_.dh_table(2, 1);
+    double a3 = dh_table_.dh_table(3, 1);
+    double d4 = dh_table_.dh_table(3, 2);
+    double d5 = dh_table_.dh_table(4, 2);
+    double d6 = dh_table_.dh_table(5, 2);
+
+
+    Vector3d pos_offset(0.0, 0.0, 0.0);
+    PosQuat pos_quat_offset = PosQuat(pos_offset, quat_cmd_);
+
+    PosQuat target_pos_quat_centre = RM::R6Pose2PosQuat( Vector6d(a3 + d5, d4, d1 + a2 - d6, M_PI, M_PI / 4.0, M_PI) );
+    PosQuat target_pos_quat = RM::TransformPosQuats({target_pos_quat_centre, pos_quat_offset});
+    target_pose_ = RM::PosQuat2R6Pose(target_pos_quat);
 
     // RM::PrintVec(target_pose_, "\ntarget_pose [m, rad]");
 
@@ -175,7 +223,6 @@ private:
     if (cga_ik::reachable) {
         cga_ik::SolveJointAngles();
         joint_angles_ = cga_ik::joints;
-        // RM::PrintVec(joint_angles_ * RM::r2d, "\njoint_angles [deg]");
     } else {
         std::cerr << "\nTarget target_pose is not reachable!" << std::endl;
     }
@@ -193,9 +240,9 @@ private:
     
     Vector6d new_angles(theta1, theta2, theta3, theta4, theta5, theta6);
     new_angles = new_angles * RM::d2r;  // convert to radians
-    Vector6d offset(0.0, 0.0, 90.0, 0.0, 90.0, -90.0);
-    offset = offset * RM::d2r;
-    joint_angles_ = new_angles + offset;
+    Vector6d pose_offset(0.0, 0.0, 90.0, 0.0, 90.0, -90.0);
+    pose_offset = pose_offset * RM::d2r;
+    joint_angles_ = new_angles + pose_offset;
   }
   
   // Publish transforms for base, each joint, and the tool.
@@ -221,7 +268,7 @@ private:
     tf_msg.header.frame_id = "world";
     tf_msg.child_frame_id = "cga_ik_base";
     tf_msg.transform.translation.x = 0.0;
-    tf_msg.transform.translation.y = -0.0;
+    tf_msg.transform.translation.y = -0.5;
     tf_msg.transform.translation.z = 0.0;
     tf_msg.transform.rotation.w = 1.0;
     tf_msg.transform.rotation.x = 0.0;
@@ -249,13 +296,16 @@ private:
 
     // Compare FK and IK
     Vector6d pose_res = RM::R6Poses2RelativeR6Pose(target_pose_, resulting_pose_);
-    // If residual pose > certian threshold, print the residual pose.
-    if (pose_res.head(3).norm() * m2mm > 1e-2 || pose_res.tail(3).norm() * RM::r2d > 1e-2)
-    {
-      RCLCPP_INFO(this->get_logger(), 
-      "Residual pose [m, rad] = %.4f, %.4f, %.4f, %.4f, %.4f, %.4f", 
-      pose_res(0), pose_res(1), pose_res(2), pose_res(3), pose_res(4), pose_res(5));
-    }
+
+    // // If residual pose > certian threshold, print the residual pose.
+    // if (pose_res.head(3).norm() * m2mm > 1e-2 || pose_res.tail(3).norm() * RM::r2d > 1e-2)
+    // {
+    //   RCLCPP_INFO(this->get_logger(), 
+    //   "Residual pose [m, rad] = %.4f, %.4f, %.4f, %.4f, %.4f, %.4f", 
+    //   pose_res(0), pose_res(1), pose_res(2), pose_res(3), pose_res(4), pose_res(5));
+    // }
+
+    publishTF(RM::R6Pose2PosQuat(target_pose_), "target_pose", "cga_ik_base");
     publishTF(RM::R6Pose2PosQuat(resulting_pose_), "cga_fk_j6", "cga_ik_base");
 
     // Publish the flange and tool (tcp) transform.
@@ -272,7 +322,8 @@ private:
     auto start = std::chrono::steady_clock::now();
 
     // Get IK target pose
-    getTargetPose();
+    // getTargetPose();
+    getPoseCommand();
 
     // Solve IK (joint angles)
     solveIK();
@@ -280,7 +331,7 @@ private:
     auto end = std::chrono::steady_clock::now();
     double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
     double frequency = (elapsed_ms > 0.0) ? 1000.0 / elapsed_ms : 0.0;
-    RCLCPP_INFO(this->get_logger(), "Ts = %.2f [ms], fs = %.2f [Hz]", elapsed_ms, frequency);
+    // RCLCPP_INFO(this->get_logger(), "Ts = %.2f [ms], fs = %.2f [Hz]", elapsed_ms, frequency);
 
     // Publish TFs
     publishAllTransforms();

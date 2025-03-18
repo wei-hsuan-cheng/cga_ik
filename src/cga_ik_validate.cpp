@@ -2,7 +2,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include "cga_ik/cga_utils.hpp"
 #include "cga_ik/cga_ik.hpp"
-#include "robot_math_utils/robot_math_utils_v1_8.hpp"
+#include "robot_math_utils/robot_math_utils_v1_9.hpp"
 
 using RM = RMUtils;
 
@@ -30,7 +30,23 @@ int main(int argc, char ** argv) {
     // Vector6d target_pose(a3 + d5, d4 * 100.0, d1 + a2 - d6, M_PI, M_PI / 4.0, M_PI);
     // Vector6d target_pose(1.0, 0.0, 0.0, 0.0, 0.0, M_PI / 2);
 
-    RM::PrintVec(target_pose, "\nIK target_pose [m, rad]");    
+    Vector3d pos_offset(0.0, 0.0, 0.0);
+    double f_motion = 0.001;
+    double t_ = 35.0;
+    Vector6d pose_offset = RM::PosQuat2R6Pose( PosQuat(pos_offset, 
+                                                       RM::Quatz(0.5 * M_PI* sin(2.0 * M_PI * f_motion * t_))
+                                                      ) 
+                                              );
+
+    target_pose = RM::TransformR6Poses({target_pose, pose_offset});
+
+    Vector6d target_pose_prime = cga_ik::CGAKinematicsPose2R6Pose( cga_ik::R6Pose2CGAKinematicsPose(target_pose) );
+    Vector6d target_pose_res = RM::R6Poses2RelativeR6Pose(target_pose_prime, target_pose);
+
+    // RM::PrintVec(target_pose, "\nIK target_pose [m, rad]");   
+    // RM::PrintVec(target_pose_prime, "\ntarget_pose_prime [m, rad]");
+    RM::PrintVec(target_pose_res, "\nPose residual [m, rad]");
+
 
     cga_ik::CGAIKRobotConfig robot_config = cga_ik::setRobotConfig(1, -1, 1);
     std::cout << "\nRobot configuration: " << robot_config.kud << ", " << robot_config.klr << ", " << robot_config.kfn << std::endl;
@@ -53,6 +69,8 @@ int main(int argc, char ** argv) {
     // Pose residual
     Vector6d pose_res = RM::R6Poses2RelativeR6Pose(resulting_pose, target_pose);
     RM::PrintVec(pose_res, "\nPose residual [m, rad]");
+
+
 
 
     
