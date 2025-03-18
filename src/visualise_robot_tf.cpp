@@ -114,7 +114,7 @@ private:
     // double offset_thy = 0.1 * cos(2.0 * M_PI * 0.005 * t_); // [rad]
     // double offset_thz = 0.1 * sin(2.0 * M_PI * 0.006 * t_); // [rad]
 
-    double offset_x = 0.1 * sin(2.0 * M_PI * 0.001 * t_); // [m]
+    double offset_x = 0.1 * cos(2.0 * M_PI * 0.003 * t_); // [m]
     double offset_y = 0.0; // [m]
     double offset_z = 0.1 * sin(2.0 * M_PI * 0.003 * t_); // [m]
     double offset_thx = 0.0; // [rad]
@@ -124,13 +124,18 @@ private:
     Vector6d offset(offset_x, offset_y, offset_z, offset_thx, offset_thy, offset_thz);
     target_pose_ += offset;
 
+    // RM::PrintVec(target_pose_, "\ntarget_pose [m, rad]");
+
   }
 
   void solve_ik() {
-    // RM::PrintVec(target_pose_, "\ntarget_pose [m, rad]");
-
-    // robot_config_ = cga_ik::setRobotConfig(1, -1, -1);
+    // Different robot configurations
     robot_config_ = cga_ik::setRobotConfig(1, 1, 1);
+    // robot_config_ = cga_ik::setRobotConfig(1, -1, -1);
+    // robot_config_ = cga_ik::setRobotConfig(1, 1, -1);
+    // robot_config_ = cga_ik::setRobotConfig(-1, 1, 1);
+    // robot_config_ = cga_ik::setRobotConfig(1, -1, 1);
+
     cga_ik::SolveNullPoints(target_pose_, dh_table_, robot_config_);
     
     if (cga_ik::reachable) {
@@ -203,7 +208,10 @@ private:
 
     // Compare FK and IK
     Vector6d pose_res = RM::R6Poses2RelativeR6Pose(target_pose_, resulting_pose_);
-    RM::PrintVec(pose_res, "\nResidual pose [m, rad]");
+    RCLCPP_INFO(this->get_logger(), 
+      "Residual pose [m, rad] = %.4f, %.4f, %.4f, %.4f, %.4f, %.4f", 
+      pose_res(0), pose_res(1), pose_res(2), pose_res(3), pose_res(4), pose_res(5)
+      );
 
     publish_tf(RM::R6Pose2PosQuat(target_pose_), "j6_ik", "base");
     publish_tf(RM::R6Pose2PosQuat(resulting_pose_), "j6_fk", "base");

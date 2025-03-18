@@ -29,13 +29,11 @@ include_directories(
 # Source files
 set(CGA_TEST_TEST_SOURCES src/cga_test.cpp)
 set(CGA_IK_VALIDATION_SOURCES src/cga_ik_validate.cpp)
-set(CGA_FK_SOURCES src/cga_fk.cpp)
 set(VISUALISE_ROBOT_TF_SOURCES src/visualise_robot_tf.cpp)
 
 # Add executables
 add_executable(cga_test ${CGA_TEST_TEST_SOURCES})
 add_executable(cga_ik_validate ${CGA_IK_VALIDATION_SOURCES})
-add_executable(cga_fk ${CGA_FK_SOURCES})
 add_executable(visualise_robot_tf ${VISUALISE_ROBOT_TF_SOURCES})
 
 # Link libraries
@@ -43,15 +41,12 @@ ament_target_dependencies(cga_test
   rclcpp
   Eigen3
 )
+
 ament_target_dependencies(cga_ik_validate
   rclcpp
   Eigen3
 )
-ament_target_dependencies(cga_fk
-  rclcpp
-  Eigen3
-  tf2_ros
-)
+
 ament_target_dependencies(visualise_robot_tf
   rclcpp
   Eigen3
@@ -63,7 +58,6 @@ ament_target_dependencies(visualise_robot_tf
 install(TARGETS
   cga_test
   cga_ik_validate
-  cga_fk
   visualise_robot_tf
   
 
