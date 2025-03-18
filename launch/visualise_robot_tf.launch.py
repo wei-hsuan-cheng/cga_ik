@@ -39,14 +39,6 @@ def generate_launch_description():
 
     robot_description = {"robot_description": robot_description_content}
     
-    visualise_robot_tf_node = Node(
-        package="cga_ik",
-        executable="visualise_robot_tf",
-        name="visualise_robot_tf",
-        output="screen",
-        parameters=[pose_f_tcp_params],
-    )
-    
     robot_state_publisher_node = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
@@ -56,10 +48,20 @@ def generate_launch_description():
             robot_description, 
         ],
     )
+    
+    visualise_robot_tf_node = Node(
+        package="cga_ik",
+        executable="visualise_robot_tf",
+        name="visualise_robot_tf",
+        output="screen",
+        parameters=[pose_f_tcp_params],
+    )
+    
+    
 
     nodes_to_start = [
-                      visualise_robot_tf_node,       
                       robot_state_publisher_node,
+                      visualise_robot_tf_node,       
                       ]
 
     return LaunchDescription(nodes_to_start)
