@@ -322,8 +322,8 @@ private:
     auto start = std::chrono::steady_clock::now();
 
     // Get IK target pose
-    // getTargetPose();
-    getPoseCommand();
+    getTargetPose();
+    // getPoseCommand();
 
     // Solve IK (joint angles)
     solveIK();
