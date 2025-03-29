@@ -40,6 +40,8 @@ struct MotorIKResult {
 
 // This struct holds the final output of the single-orientation IK.
 struct SphericalRobotIKResult {
+    float r_b, r_e;
+    cga::CGA s0, s1, s2;           // motor (pivot) positions
     cga::CGA y0, y1, y2;           // end-plate corners
     cga::CGA elb0, elb1, elb2;     // elbow positions
     cga::CGA endpoint;             // final “end point”
@@ -164,6 +166,11 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
 
     // Assemble results:
     SphericalRobotIKResult result;
+    result.r_b = r_b;
+    result.r_e = r_e;
+    result.s0 = r_b * s0;
+    result.s1 = r_b * s1;
+    result.s2 = r_b * s2;
     result.y0 = y0;
     result.y1 = y1;
     result.y2 = y2;

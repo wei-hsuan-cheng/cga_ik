@@ -26,6 +26,11 @@ namespace cga_utils {
         return res;
     }
 
+    // G2R
+    inline Eigen::Vector3f G2R(const CGA &vec_G3) {
+        return Eigen::Vector3f(vec_G3[1], vec_G3[2], vec_G3[3]);
+    }
+
     //-----------------------------------------------------------------
     // Grade projection function.
     // Extracts only the components of a multivector that are of grade k.
