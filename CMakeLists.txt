@@ -41,22 +41,31 @@ include_directories(
 set(CGA_TEST_TEST_SOURCES src/cga_test.cpp)
 set(CGA_IK_VALIDATION_SOURCES src/cga_ik_validate.cpp)
 set(VISUALISE_ROBOT_TF_SOURCES src/visualise_robot_tf.cpp)
+set(CGA_IK_SPHERICAL_ROBOT_VALIDATE_SOURCES src/cga_ik_spherical_robot_validate.cpp)
+set(VISUALISE_SPHERICAL_ROBOT_TF_SOURCES src/visualise_spherical_robot_tf.cpp)
 
 # Add executables
 add_executable(cga_test ${CGA_TEST_TEST_SOURCES})
 add_executable(cga_ik_validate ${CGA_IK_VALIDATION_SOURCES})
 add_executable(visualise_robot_tf ${VISUALISE_ROBOT_TF_SOURCES})
+add_executable(cga_ik_spherical_robot_validate ${CGA_IK_SPHERICAL_ROBOT_VALIDATE_SOURCES})
+add_executable(visualise_spherical_robot_tf ${VISUALISE_SPHERICAL_ROBOT_TF_SOURCES})
+
 
 # Link libraries
 ament_target_dependencies(cga_test ${dependencies})
 ament_target_dependencies(cga_ik_validate ${dependencies})
 ament_target_dependencies(visualise_robot_tf ${dependencies})
+ament_target_dependencies(cga_ik_spherical_robot_validate ${dependencies})
+ament_target_dependencies(visualise_spherical_robot_tf ${dependencies})
 
 # Install targets
 install(TARGETS
   cga_test
   cga_ik_validate
   visualise_robot_tf
+  cga_ik_spherical_robot_validate
+  visualise_spherical_robot_tf
   
   DESTINATION lib/${PROJECT_NAME}
 )
