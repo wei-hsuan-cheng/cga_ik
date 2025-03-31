@@ -154,59 +154,64 @@ private:
     };
 
     // // Now let's “down” these pivot points
-    // Eigen::Vector3f pivot0_3 = cga_utils::G2R( down(up(pivotCga(s0_))) );
-    // Eigen::Vector3f pivot1_3 = cga_utils::G2R( down(up(pivotCga(s1_))) );
-    // Eigen::Vector3f pivot2_3 = cga_utils::G2R( down(up(pivotCga(s2_))) );
+    // Eigen::Vector3f pivot0_3d = cga_utils::G2R( down(up(pivotCga(s0_))) );
+    // Eigen::Vector3f pivot1_3d = cga_utils::G2R( down(up(pivotCga(s1_))) );
+    // Eigen::Vector3f pivot2_3d = cga_utils::G2R( down(up(pivotCga(s2_))) );
 
-    Eigen::Vector3f pivot0_3 = cga_utils::G2R( ik_result.s0 );
-    Eigen::Vector3f pivot1_3 = cga_utils::G2R( ik_result.s1 );
-    Eigen::Vector3f pivot2_3 = cga_utils::G2R( ik_result.s2 );
+    Eigen::Vector3f pivot0_3d = cga_utils::G2R( ik_result.s0 );
+    Eigen::Vector3f pivot1_3d = cga_utils::G2R( ik_result.s1 );
+    Eigen::Vector3f pivot2_3d = cga_utils::G2R( ik_result.s2 );
 
-    std::cout << "pivot0_3 = " << pivot0_3.transpose() << std::endl;
-    std::cout << "pivot1_3 = " << pivot1_3.transpose() << std::endl;
-    std::cout << "pivot2_3 = " << pivot2_3.transpose() << std::endl;
+    // std::cout << "pivot0_3d = " << pivot0_3d.transpose() << std::endl;
+    // std::cout << "pivot1_3d = " << pivot1_3d.transpose() << std::endl;
+    // std::cout << "pivot2_3d = " << pivot2_3d.transpose() << std::endl;
 
     // Publish them w.r.t. base:
-    publishPointAsTF(pivot0_3, "srb_pivot_0", "srb_base");
-    publishPointAsTF(pivot1_3, "srb_pivot_1", "srb_base");
-    publishPointAsTF(pivot2_3, "srb_pivot_2", "srb_base");
+    publishPointAsTF(pivot0_3d, "srb_pivot_0", "srb_base");
+    publishPointAsTF(pivot1_3d, "srb_pivot_1", "srb_base");
+    publishPointAsTF(pivot2_3d, "srb_pivot_2", "srb_base");
+
+    // Rotation centre of the robot
+
+    Eigen::Vector3f rotation_centre_3d = cga_utils::G2R( ik_result.rotation_centre );
+    publishPointAsTF(rotation_centre_3d, "rotation_centre", "srb_base");
 
     // (C) Elbow frames: use (ik_result.elb0, elb1, elb2)
     // down(...) each to get a 3D location
 
-    Eigen::Vector3f elb0_3 = cga_utils::G2R( down(ik_result.elb0) );
-    Eigen::Vector3f elb1_3 = cga_utils::G2R( down(ik_result.elb1) );
-    Eigen::Vector3f elb2_3 = cga_utils::G2R( down(ik_result.elb2) );
+    Eigen::Vector3f elb0_3d = cga_utils::G2R( down(ik_result.elb0) );
+    Eigen::Vector3f elb1_3d = cga_utils::G2R( down(ik_result.elb1) );
+    Eigen::Vector3f elb2_3d = cga_utils::G2R( down(ik_result.elb2) );
     
     
-    // std::cout << "elb0 = " << elb0_3.transpose() << std::endl;
-    // std::cout << "elb1 = " << elb1_3.transpose() << std::endl;
-    // std::cout << "elb2 = " << elb2_3.transpose() << std::endl;
+    // std::cout << "elb0 = " << elb0_3d.transpose() << std::endl;
+    // std::cout << "elb1 = " << elb1_3d.transpose() << std::endl;
+    // std::cout << "elb2 = " << elb2_3d.transpose() << std::endl;
     // std::cout << "--------------------------------" << std::endl;
 
 
-    publishPointAsTF(elb0_3, "srb_elbow_0", "srb_base");
-    publishPointAsTF(elb1_3, "srb_elbow_1", "srb_base");
-    publishPointAsTF(elb2_3, "srb_elbow_2", "srb_base");
+    publishPointAsTF(elb0_3d, "srb_elbow_0", "srb_base");
+    publishPointAsTF(elb1_3d, "srb_elbow_1", "srb_base");
+    publishPointAsTF(elb2_3d, "srb_elbow_2", "srb_base");
 
     // (D) End-effector: let's treat the “endpoint” from the IK result as a single final frame
-    Eigen::Vector3f ee_3 = down(ik_result.endpoint).vector().head<3>();
-    publishPointAsTF(ee_3, "srb_end_effector", "srb_base");
+    Eigen::Vector3f ee_3d = cga_utils::G2R( down(ik_result.endpoint) );
+    publishPointAsTF(ee_3d, "srb_end_effector", "srb_base");
 
     // for publishing y0, y1, and y2
-    Eigen::Vector3f y0_3 = cga_utils::G2R( down(ik_result.y0) );
-    Eigen::Vector3f y1_3 = cga_utils::G2R( down(ik_result.y1) );
-    Eigen::Vector3f y2_3 = cga_utils::G2R( down(ik_result.y2) );
+    Eigen::Vector3f y0_3d = cga_utils::G2R( down(ik_result.y0) );
+    Eigen::Vector3f y1_3d = cga_utils::G2R( down(ik_result.y1) );
+    Eigen::Vector3f y2_3d = cga_utils::G2R( down(ik_result.y2) );
 
-    // std::cout << "y0_3 = " << y0_3.transpose() << std::endl;
-    // std::cout << "y1_3 = " << y1_3.transpose() << std::endl;
-    // std::cout << "y2_3 = " << y2_3.transpose() << std::endl;
+    // std::cout << "y0_3d = " << y0_3d.transpose() << std::endl;
+    // std::cout << "y1_3d = " << y1_3d.transpose() << std::endl;
+    // std::cout << "y2_3d = " << y2_3d.transpose() << std::endl;
     // std::cout << "--------------------------------" << std::endl;
 
 
-    publishPointAsTF(y0_3, "srb_y_0", "srb_base");
-    publishPointAsTF(y1_3, "srb_y_1", "srb_base");
-    publishPointAsTF(y2_3, "srb_y_2", "srb_base");
+    publishPointAsTF(y0_3d, "srb_y_0", "srb_base");
+    publishPointAsTF(y1_3d, "srb_y_1", "srb_base");
+    publishPointAsTF(y2_3d, "srb_y_2", "srb_base");
 
 
 
