@@ -132,32 +132,8 @@ private:
       tf_broadcaster_->sendTransform(tf);
     };
 
+
     // Extract each pivot in 3D:
-    // pivot_i = r_b*s_i + rotation_centre
-    // We replicate the same s_i from inside computeSphericalRobotIK:
-    //   s0 = e1, s1 = -0.5 e1 + sqrt(3)/2 e2, s2 = ...
-    //   rotation_centre = -(1/3)*r_b * e3
-    // But let's do the same logic here, or a small function for it.
-    // For demonstration, let's define them again quickly:
-
-    // float r_b = 0.5f;
-    // cga::CGA s0_ = 1.0f * cga::e1;
-    // cga::CGA s1_ = (-0.5f * cga::e1) + ((std::sqrt(3.0f)/2.0f) * cga::e2);
-    // cga::CGA s2_ = (-0.5f * cga::e1) - ((std::sqrt(3.0f)/2.0f) * cga::e2);
-    cga::CGA rotation_centre_ = -(1.0f/3.0f) * ik_result.r_b * cga::e3;
-
-    // pivot for motor i in CGA grade-1 form:
-    auto pivotCga = [&](const cga::CGA &s_i) {
-      // r_b*s_i + rotation_centre_, then convert to conformal point to use down(...)
-      cga::CGA p = ik_result.r_b * s_i + rotation_centre_;
-      return p; // This is still a Grade-1 vector, we can up(...) if needed
-    };
-
-    // // Now let's “down” these pivot points
-    // Eigen::Vector3f pivot0_3d = cga_utils::G2R( down(up(pivotCga(s0_))) );
-    // Eigen::Vector3f pivot1_3d = cga_utils::G2R( down(up(pivotCga(s1_))) );
-    // Eigen::Vector3f pivot2_3d = cga_utils::G2R( down(up(pivotCga(s2_))) );
-
     Eigen::Vector3f pivot0_3d = cga_utils::G2R( ik_result.s0 );
     Eigen::Vector3f pivot1_3d = cga_utils::G2R( ik_result.s1 );
     Eigen::Vector3f pivot2_3d = cga_utils::G2R( ik_result.s2 );
@@ -184,10 +160,10 @@ private:
     Eigen::Vector3f elb2_3d = cga_utils::G2R( down(ik_result.elb2) );
     
     
-    // std::cout << "elb0 = " << elb0_3d.transpose() << std::endl;
-    // std::cout << "elb1 = " << elb1_3d.transpose() << std::endl;
-    // std::cout << "elb2 = " << elb2_3d.transpose() << std::endl;
-    // std::cout << "--------------------------------" << std::endl;
+    std::cout << "elb0 = " << elb0_3d.transpose() << std::endl;
+    std::cout << "elb1 = " << elb1_3d.transpose() << std::endl;
+    std::cout << "elb2 = " << elb2_3d.transpose() << std::endl;
+    std::cout << "--------------------------------" << std::endl;
 
 
     publishPointAsTF(elb0_3d, "srb_elbow_0", "srb_base");
