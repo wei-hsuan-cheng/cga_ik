@@ -103,6 +103,7 @@ inline CGA operator ~ (const CGA &a) {
 };
 
 // Dual operator: !a (Poincaré duality)
+// Definition of DUAL here: M.Dual() = e12345 * M = M * e12345
 inline CGA operator ! (const CGA &a) {
   CGA res;
   res[0]=-a[31];

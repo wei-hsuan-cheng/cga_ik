@@ -22,7 +22,7 @@ int main(int argc, char** argv)
     float r_e = 0.4f;
 
     // Compute the IK:
-    auto result = cga_ik_spherical_robot::computeSphericalRobotIK(theta0, theta1, theta2, r_b, r_e);
+    auto result = cga_ik_spherical_robot::computeSphericalRobotIK(Eigen::Quaternionf(1.0f, 0.0f, 0.0f, 0.0f), r_b, r_e);
 
     // Print out the angles
     auto rad2deg = [](float r){ return r * 180.0f / float(M_PI); };
