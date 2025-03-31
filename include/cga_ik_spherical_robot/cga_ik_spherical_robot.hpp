@@ -37,11 +37,11 @@ struct MotorIKResult {
 // This struct holds the final output of the single-orientation IK.
 struct SphericalRobotIKResult {
     float r_b, r_e;
-    CGA rb_s0, rb_s1, rb_s2;           // motor (pivot) positions
-    CGA rotation_centre;      // rotation centre of the robot
-    CGA y0, y1, y2;           // end-plate corners
-    CGA elb0, elb1, elb2;     // elbow positions
-    CGA endpoint;             // final “end point”
+    Eigen::Vector3f rb_s0, rb_s1, rb_s2;           // motor (pivot) positions
+    Eigen::Vector3f rotation_centre;      // rotation centre of the robot
+    Eigen::Vector3f y0, y1, y2;           // end-plate corners
+    Eigen::Vector3f elb0, elb1, elb2;     // elbow positions
+    Eigen::Vector3f endpoint;             // final “end point”
     float angle0, angle1, angle2;  // motor angles (in radians)
 };
 
@@ -170,17 +170,17 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
     SphericalRobotIKResult result;
     result.r_b = r_b;
     result.r_e = r_e;
-    result.rb_s0 = r_b * s0;
-    result.rb_s1 = r_b * s1;
-    result.rb_s2 = r_b * s2;
-    result.rotation_centre = rotation_centre;
-    result.y0 = y0;
-    result.y1 = y1;
-    result.y2 = y2;
-    result.elb0 = elb0;
-    result.elb1 = elb1;
-    result.elb2 = elb2;
-    result.endpoint = endpoint;
+    result.rb_s0 = cga_utils::G2R(r_b * s0);
+    result.rb_s1 = cga_utils::G2R(r_b * s1);
+    result.rb_s2 = cga_utils::G2R(r_b * s2);
+    result.rotation_centre = cga_utils::G2R(rotation_centre);
+    result.y0 = cga_utils::G2R( down(y0) );
+    result.y1 = cga_utils::G2R( down(y1) );
+    result.y2 = cga_utils::G2R( down(y2) );
+    result.elb0 = cga_utils::G2R( down(elb0) );
+    result.elb1 = cga_utils::G2R( down(elb1) );
+    result.elb2 = cga_utils::G2R( down(elb2) );
+    result.endpoint = cga_utils::G2R( down(endpoint) );
     result.angle0 = angle0;
     result.angle1 = angle1;
     result.angle2 = angle2;
@@ -191,6 +191,8 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
 } // namespace cga_ik_spherical_robot
 
 #endif // CGA_IK_SPHERICAL_ROBOT_HPP
+
+
 
 
 

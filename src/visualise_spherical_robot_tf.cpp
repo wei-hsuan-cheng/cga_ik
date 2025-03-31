@@ -123,39 +123,28 @@ private:
       tf_broadcaster_->sendTransform(tf);
     };
 
-
     // Extract each pivot in 3D:
-    Eigen::Vector3f pivot0_3d = cga_utils::G2R( ik_result.rb_s0 );
-    Eigen::Vector3f pivot1_3d = cga_utils::G2R( ik_result.rb_s1 );
-    Eigen::Vector3f pivot2_3d = cga_utils::G2R( ik_result.rb_s2 );
-    publishPointAsTF(pivot0_3d, "srb_pivot_0", "srb_base");
-    publishPointAsTF(pivot1_3d, "srb_pivot_1", "srb_base");
-    publishPointAsTF(pivot2_3d, "srb_pivot_2", "srb_base");
+    publishPointAsTF(ik_result.rb_s0, "srb_pivot_0", "srb_base");
+    publishPointAsTF(ik_result.rb_s1, "srb_pivot_1", "srb_base");
+    publishPointAsTF(ik_result.rb_s2, "srb_pivot_2", "srb_base");
 
     // Rotation centre of the robot
+    publishPointAsTF(ik_result.rotation_centre, "rotation_centre", "srb_base");
 
-    Eigen::Vector3f rotation_centre_3d = cga_utils::G2R( ik_result.rotation_centre );
-    publishPointAsTF(rotation_centre_3d, "rotation_centre", "srb_base");
+    // For publishing y0, y1, and y2
+    publishPointAsTF(ik_result.y0, "srb_y_0", "srb_base");
+    publishPointAsTF(ik_result.y1, "srb_y_1", "srb_base");
+    publishPointAsTF(ik_result.y2, "srb_y_2", "srb_base");
 
-    // (C) Elbow frames: use (ik_result.elb0, elb1, elb2)
-    Eigen::Vector3f elb0_3d = cga_utils::G2R( down(ik_result.elb0) );
-    Eigen::Vector3f elb1_3d = cga_utils::G2R( down(ik_result.elb1) );
-    Eigen::Vector3f elb2_3d = cga_utils::G2R( down(ik_result.elb2) );
-    publishPointAsTF(elb0_3d, "srb_elbow_0", "srb_base");
-    publishPointAsTF(elb1_3d, "srb_elbow_1", "srb_base");
-    publishPointAsTF(elb2_3d, "srb_elbow_2", "srb_base");
+    // Elbow frames: use (ik_result.elb0, elb1, elb2)
+    publishPointAsTF(ik_result.elb0, "srb_elbow_0", "srb_base");
+    publishPointAsTF(ik_result.elb1, "srb_elbow_1", "srb_base");
+    publishPointAsTF(ik_result.elb2, "srb_elbow_2", "srb_base");
+    
+    // End-effector: let's treat the “endpoint” from the IK result as a single final frame
+    publishPointAsTF(ik_result.endpoint, "srb_end_effector", "srb_base");
 
-    // (D) End-effector: let's treat the “endpoint” from the IK result as a single final frame
-    Eigen::Vector3f ee_3d = cga_utils::G2R( down(ik_result.endpoint) );
-    publishPointAsTF(ee_3d, "srb_end_effector", "srb_base");
-
-    // for publishing y0, y1, and y2
-    Eigen::Vector3f y0_3d = cga_utils::G2R( down(ik_result.y0) );
-    Eigen::Vector3f y1_3d = cga_utils::G2R( down(ik_result.y1) );
-    Eigen::Vector3f y2_3d = cga_utils::G2R( down(ik_result.y2) );
-    publishPointAsTF(y0_3d, "srb_y_0", "srb_base");
-    publishPointAsTF(y1_3d, "srb_y_1", "srb_base");
-    publishPointAsTF(y2_3d, "srb_y_2", "srb_base");
+    
 
 
 
