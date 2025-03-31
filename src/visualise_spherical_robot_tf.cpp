@@ -13,16 +13,7 @@
 #include "cga_ik_spherical_robot/cga_ik_spherical_robot.hpp"
 #include "robot_math_utils/robot_math_utils_v1_9.hpp"
 
-// We'll use an inline namespace for convenience
-namespace
-{
-// A simple helper to convert radians to degrees
-inline double rad2deg(double rad) {
-  return rad * 180.0 / M_PI;
-}
-
-} // anonymous namespace
-
+using RM = RMUtils;
 
 class VisualiseSphericalRobotTF : public rclcpp::Node
 {
@@ -55,9 +46,9 @@ private:
 
     // 2) Compute sinusoidal angles in radians
     //    For example, each motor angle changes with different frequencies
-    double freq0 = 0.001;  // [cycles/callback]
-    double freq1 = 0.0007;
-    double freq2 = 0.0004;
+    double freq0 = 0.01;  // [cycles/callback]
+    double freq1 = 0.007;
+    double freq2 = 0.004;
 
     double theta0 = 0.2 * std::sin(2.0 * M_PI * freq0 * t_);
     double theta1 = 0.4 * std::cos(2.0 * M_PI * freq1 * t_);
@@ -85,7 +76,7 @@ private:
 
     // Optionally publish them as an array
     std_msgs::msg::Float64MultiArray angles_msg;
-    angles_msg.data = {ik_result.angle0, ik_result.angle1, ik_result.angle2};
+    angles_msg.data = {ik_result.angle0 * RM::r2d, ik_result.angle1 * RM::r2d, ik_result.angle2 * RM::r2d};
     angles_pub_->publish(angles_msg);
 
     // 5) Publish TF frames:
@@ -134,15 +125,9 @@ private:
 
 
     // Extract each pivot in 3D:
-    Eigen::Vector3f pivot0_3d = cga_utils::G2R( ik_result.s0 );
-    Eigen::Vector3f pivot1_3d = cga_utils::G2R( ik_result.s1 );
-    Eigen::Vector3f pivot2_3d = cga_utils::G2R( ik_result.s2 );
-
-    // std::cout << "pivot0_3d = " << pivot0_3d.transpose() << std::endl;
-    // std::cout << "pivot1_3d = " << pivot1_3d.transpose() << std::endl;
-    // std::cout << "pivot2_3d = " << pivot2_3d.transpose() << std::endl;
-
-    // Publish them w.r.t. base:
+    Eigen::Vector3f pivot0_3d = cga_utils::G2R( ik_result.rb_s0 );
+    Eigen::Vector3f pivot1_3d = cga_utils::G2R( ik_result.rb_s1 );
+    Eigen::Vector3f pivot2_3d = cga_utils::G2R( ik_result.rb_s2 );
     publishPointAsTF(pivot0_3d, "srb_pivot_0", "srb_base");
     publishPointAsTF(pivot1_3d, "srb_pivot_1", "srb_base");
     publishPointAsTF(pivot2_3d, "srb_pivot_2", "srb_base");
@@ -153,19 +138,9 @@ private:
     publishPointAsTF(rotation_centre_3d, "rotation_centre", "srb_base");
 
     // (C) Elbow frames: use (ik_result.elb0, elb1, elb2)
-    // down(...) each to get a 3D location
-
     Eigen::Vector3f elb0_3d = cga_utils::G2R( down(ik_result.elb0) );
     Eigen::Vector3f elb1_3d = cga_utils::G2R( down(ik_result.elb1) );
     Eigen::Vector3f elb2_3d = cga_utils::G2R( down(ik_result.elb2) );
-    
-    
-    std::cout << "elb0 = " << elb0_3d.transpose() << std::endl;
-    std::cout << "elb1 = " << elb1_3d.transpose() << std::endl;
-    std::cout << "elb2 = " << elb2_3d.transpose() << std::endl;
-    std::cout << "--------------------------------" << std::endl;
-
-
     publishPointAsTF(elb0_3d, "srb_elbow_0", "srb_base");
     publishPointAsTF(elb1_3d, "srb_elbow_1", "srb_base");
     publishPointAsTF(elb2_3d, "srb_elbow_2", "srb_base");
@@ -178,13 +153,6 @@ private:
     Eigen::Vector3f y0_3d = cga_utils::G2R( down(ik_result.y0) );
     Eigen::Vector3f y1_3d = cga_utils::G2R( down(ik_result.y1) );
     Eigen::Vector3f y2_3d = cga_utils::G2R( down(ik_result.y2) );
-
-    // std::cout << "y0_3d = " << y0_3d.transpose() << std::endl;
-    // std::cout << "y1_3d = " << y1_3d.transpose() << std::endl;
-    // std::cout << "y2_3d = " << y2_3d.transpose() << std::endl;
-    // std::cout << "--------------------------------" << std::endl;
-
-
     publishPointAsTF(y0_3d, "srb_y_0", "srb_base");
     publishPointAsTF(y1_3d, "srb_y_1", "srb_base");
     publishPointAsTF(y2_3d, "srb_y_2", "srb_base");
