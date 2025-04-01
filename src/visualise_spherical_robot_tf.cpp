@@ -239,16 +239,23 @@ private:
         Eigen::Vector3f pos_yc_ee = -(ik_result_.l) * Eigen::Vector3f(0.0, 1.0, 0.0);
         publishTF(pos_yc_ee, Eigen::Quaternionf::Identity(), "srb_ee", "srb_epl_c");
 
-        // // Debugging
-        // // Compute the are of the end-plate triangle
-        // Eigen::Vector3f v1 = ik_result_.y1 - ik_result_.y0;
-        // Eigen::Vector3f v2 = ik_result_.y2 - ik_result_.y0;
-        // float A_tri_ep = (0.5 * v1.cross(v2)).norm();
+        // Debugging
+        // Compute the are of the end-plate triangle
+        Eigen::Vector3f v1 = ik_result_.y1 - ik_result_.y0;
+        Eigen::Vector3f v2 = ik_result_.y2 - ik_result_.y0;
+        float A_tri_ep = (0.5 * v1.cross(v2)).norm();
         // std::cout << "A_tri_ep = " << A_tri_ep << std::endl;
 
-        // // Compare the lengths
-        // float l_prime = (ik_result_.yc - ik_result_.rotation_centre).norm();
-        // std::cout << "l - l_prime = " << ik_result_.l - l_prime << std::endl;
+        // Compare the lengths
+        float d_rc_yc = (ik_result_.yc - ik_result_.rotation_centre).norm();
+        float d_rc_y0 = (ik_result_.yc - ik_result_.y0).norm();
+
+
+        std::cout << "d = " << ik_result_.d << std::endl;
+        std::cout << "d_rc_yc = " << d_rc_yc << std::endl;
+        std::cout << "d_rc_y0 = " << d_rc_y0 << std::endl;
+
+        // std::cout << "(l - d_rc_yc) / l= " << (ik_result_.l - d_rc_yc) / ik_result_.l << std::endl;
 
 
 
