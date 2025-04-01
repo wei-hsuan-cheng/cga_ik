@@ -162,38 +162,53 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
         return pivot3 - e; // elbow -> motor pivot
     };
 
-    // float angle0 = angleBetween(getL1(elb0), getL2(elb0, s0));
-    // float angle1 = angleBetween(getL1(elb1), getL2(elb1, s1));
-    // float angle2 = angleBetween(getL1(elb2), getL2(elb2, s2));
 
+    // Test: inner product to compute the angle between two planes
     CGA plane_base = up(r_b * s0) ^ up(r_b * s1) ^ up(r_b * s2) ^ ni;
-    // CGA plane_base = (r_b * s0) ^ (r_b * s1) ^ (r_b * s2) ^ ni;
-    // CGA plane_base = up(s0) ^ up(s1) ^ up(s2) ^ ni;
     CGA plane_mcy0 = up(r_b * s0) ^ up_rotation_centre ^ y0 ^ ni;
-    CGA plane_mcyo0 = up(r_b * s0) ^ up_rotation_centre ^ no ^ ni;
+    CGA plane_mco0 = up(r_b * s0) ^ up_rotation_centre ^ no ^ ni;
     
-    CGA plane_0 = plane_mcy0.normalized();
-    CGA plane_compare0 = plane_mcyo0.normalized();
-    // CGA plane_compare0 = plane_base.normalized();
+    // CGA plane_0 = plane_mcy0.normalized();
+    // CGA plane_compare0 = plane_mco0.normalized();
+    // // CGA plane_compare0 = plane_base.normalized();
 
     // CGA plane_0 = plane_mcy0;
-    // CGA plane_compare0 = plane_mcyo0;
-    // // CGA plane_compare0 = plane_base;
+    // CGA plane_compare0 = plane_mco0;
+    // // CGA plane_compare0 = plane_base.normalized();
     
     // CGA ang = !(plane_compare0) & !(plane_0);
     // CGA ang = !(plane_compare0) ^ !(plane_0);
     // CGA ang = (plane_compare0) & (plane_0);
     // CGA ang = !(plane_compare0) | !(plane_0);
-    CGA ang = (plane_compare0) | (plane_0);
-    std::cout << "ang0 = "; (ang * RM::r2d).log();
 
-    // CGA ath1 = e2; 
-    // ath1 = ath1.normalized();
-    // CGA bth1 = static_cast<float>(klr) * !(Pc);
-    // bth1 = bth1.normalized();
-    // CGA Nth1 = (e1 ^ e2).normalized();
-    // float theta1 = std::atan2(((ath1 ^ bth1) * Nth1.inverse())[0], (ath1 | bth1)[0]) + cga_offset1;
-    // theta1 = RM::ConstrainedAngle(theta1, true);
+    // // std::cout << "plane_compare0 = "; !plane_compare0.log();
+    // CGA ang = (plane_compare0) | (plane_0);
+    // std::cout << "ang0 = "; (ang * RM::r2d).log();
+
+
+    // Test: cross product to compute the angle between two planes
+    Eigen::Vector3f normal_mcy0 = 
+    ( cga_utils::G2R(r_b * s0) - cga_utils::G2R(rotation_centre) ).cross( cga_utils::G2R( down(y0) ) - cga_utils::G2R(rotation_centre) );
+    Eigen::Vector3f normal_mco0 = 
+    ( cga_utils::G2R(r_b * s0) - cga_utils::G2R(rotation_centre) ).cross( cga_utils::G2R( down(no) ) - cga_utils::G2R(rotation_centre) );
+
+    normal_mcy0 = normal_mcy0.normalized();
+    normal_mco0 = -normal_mco0.normalized();
+
+    // Compute axis-angle representation
+    // std::cout << "normal_mcy0 = " << normal_mcy0.transpose() << std::endl;
+    // std::cout << "normal_mco0 = " << normal_mco0.transpose() << std::endl;
+    Eigen::Vector3f axis_cross = normal_mcy0.cross(normal_mco0);
+    // std::cout << "axis_cross = " << axis_cross << std::endl;
+
+    float ang_cross = angleBetween(normal_mcy0, normal_mco0);
+    // std::cout << "ang_cross = " << ang_cross * RM::r2d << std::endl;
+
+    float ang0 = axis_cross(0) >= 0 ? ang_cross : -ang_cross;
+    std::cout << "ang0 = " << ang0 * RM::r2d << std::endl;
+
+
+
 
     float angle0 = angleBetween(getL1(elb0), getL2(elb0, s0));
     float angle1 = angleBetween(getL1(elb1), getL2(elb1, s1));
