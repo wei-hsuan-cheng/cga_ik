@@ -76,7 +76,8 @@ private:
     int k_;
     double t_;
 
-    float r_b_, r_e_;
+    float r_b_, ratio_e_b_, r_e_;
+    CGA e_principal_, rot_cen_, s_0_, s_1_;
     cga_ik_spherical_robot::SphericalRobotIKResult ik_result_;
     
 
@@ -87,11 +88,33 @@ private:
         k_ = 0;
         t_ = 0.0;
     }
+
     void initSRBIK()
     {
+        // Spherical robot geometries
+        // Base radius and end-plate radius
         r_b_ = 0.5f;
-        r_e_ = 0.3f;
-        ik_result_ = cga_ik_spherical_robot::computeSphericalRobotIK(Eigen::Quaternionf(1.0f, 0.0f, 0.0f, 0.0f), r_b_, r_e_);
+        ratio_e_b_ = 0.6f;
+        r_e_ = r_b_ * ratio_e_b_;
+
+        // Spherical robot coordinate system
+        // Principal axis of the 3-DoF spherical robot
+        e_principal_ = e3;
+
+        // Rotation centre
+        rot_cen_ = (1.0f / 3.0f) * r_b_ * e_principal_;
+
+        // Each motor position is set in the base plane, separated by 120 [deg].
+        s_0_ = e1;
+        CGA rot_e12_120 = cga_utils::rot(e1 * e2, (float) (2.0 * M_PI / 3.0)); // Rotate s_0_ by 120 degrees to get s_1_
+        s_1_ = rot_e12_120 * s_0_ * ~rot_e12_120;
+
+        // IK solver for the spherical robot
+        ik_result_ = cga_ik_spherical_robot::computeSphericalRobotIK(e_principal_, 
+                                                                     rot_cen_, 
+                                                                     s_0_, s_1_, 
+                                                                     Eigen::Quaternionf::Identity(), 
+                                                                     r_b_, r_e_);
     }
 
     void publishTF(const Eigen::Vector3f &p, const Eigen::Quaternionf &q, const std::string &child, const std::string &parent)
@@ -125,9 +148,9 @@ private:
         float g_color,  // Green [0..1]
         float b_color,  // Blue  [0..1]
         float a_color   // Alpha [0..1]
-    )
+        )
     {
-        // Build a TRIANGLE_LIST marker from the 3 points x0p0, p1, p2
+        // Build a TRIANGLE_LIST marker from the 3 points
         visualization_msgs::msg::Marker tri_marker;
         tri_marker.header.stamp = this->now();
         tri_marker.header.frame_id = frame_id;
@@ -183,22 +206,26 @@ private:
         // Vector4d axis_ang(0.0, 1.0, 0.0, (double) th);
         Vector4d axis_ang(1.0, 0.0, 0.0, (double) th);
 
-        Vector3d so3 = (axis_ang.head(3)).normalized() * axis_ang(3); // u_hat * theta
+        Vector3d so3 = (axis_ang.head(3)).normalized() * axis_ang(3);
         Eigen::Quaternionf quat = RM::so32Quat(so3).cast<float>();
 
         // 3) Call our CGA-based IK solver for the spherical robot
-        ik_result_ = cga_ik_spherical_robot::computeSphericalRobotIK(quat, r_b_, r_e_);
+        ik_result_ = cga_ik_spherical_robot::computeSphericalRobotIK(e_principal_, 
+                                                                     rot_cen_, 
+                                                                     s_0_, s_1_, 
+                                                                     quat, 
+                                                                     r_b_, r_e_);
 
         // 4) Publish the joint states for these angles
         sensor_msgs::msg::JointState js_msg;
         js_msg.header.stamp = this->now();
         js_msg.name = {"joint_0", "joint_1", "joint_2"};
-        js_msg.position = {ik_result_.angle0, ik_result_.angle1, ik_result_.angle2};
+        js_msg.position = {ik_result_.th_0, ik_result_.th_1, ik_result_.th_2};
         joint_pub_->publish(js_msg);
 
         // Optionally publish them as an array
         std_msgs::msg::Float64MultiArray angles_msg;
-        angles_msg.data = {ik_result_.angle0 * RM::r2d, ik_result_.angle1 * RM::r2d, ik_result_.angle2 * RM::r2d};
+        angles_msg.data = {ik_result_.th_0 * RM::r2d, ik_result_.th_1 * RM::r2d, ik_result_.th_2 * RM::r2d};
         angles_pub_->publish(angles_msg);
 
         // 5) Publish TF frames:
@@ -217,46 +244,38 @@ private:
         }
 
         // Extract each motor in 3D:
-        publishTF(ik_result_.m0, Eigen::Quaternionf::Identity(), "srb_motor_0", "srb_base");
-        publishTF(ik_result_.m1, Eigen::Quaternionf::Identity(), "srb_motor_1", "srb_base");
-        publishTF(ik_result_.m2, Eigen::Quaternionf::Identity(), "srb_motor_2", "srb_base");
+        publishTF(ik_result_.m_0, Eigen::Quaternionf::Identity(), "srb_motor_0", "srb_base");
+        publishTF(ik_result_.m_1, Eigen::Quaternionf::Identity(), "srb_motor_1", "srb_base");
+        publishTF(ik_result_.m_2, Eigen::Quaternionf::Identity(), "srb_motor_2", "srb_base");
 
         // Rotation centre of the robot
-        publishTF(ik_result_.rotation_centre, Eigen::Quaternionf::Identity(), "srb_rot_cen", "srb_base");
+        publishTF(ik_result_.rot_cen, Eigen::Quaternionf::Identity(), "srb_rot_cen", "srb_base");
 
-        // For publishing y0, y1, and y2 (end-plate corners)
-        publishTF(ik_result_.y0, quat, "srb_epl_0", "srb_base");
-        publishTF(ik_result_.y1, quat, "srb_epl_1", "srb_base");
-        publishTF(ik_result_.y2, quat, "srb_epl_2", "srb_base");
-        publishTF(ik_result_.yc, quat, "srb_epl_c", "srb_base");
+        // For publishing epl_0, epl_1, and epl_2 (end-plate corners)
+        publishTF(ik_result_.epl_0, quat, "srb_epl_0", "srb_base");
+        publishTF(ik_result_.epl_1, quat, "srb_epl_1", "srb_base");
+        publishTF(ik_result_.epl_2, quat, "srb_epl_2", "srb_base");
+        publishTF(ik_result_.epl_c, quat, "srb_epl_c", "srb_base");
 
-        // Elbow frames: use (ik_result_.elb0, elb1, elb2)
-        publishTF(ik_result_.elb0, Eigen::Quaternionf::Identity(), "srb_elbow_0", "srb_base");
-        publishTF(ik_result_.elb1, Eigen::Quaternionf::Identity(), "srb_elbow_1", "srb_base");
-        publishTF(ik_result_.elb2, Eigen::Quaternionf::Identity(), "srb_elbow_2", "srb_base");
+        // Elbow frames: use (ik_result_.elb_0, elb_1, elb_2)
+        publishTF(ik_result_.elb_0, Eigen::Quaternionf::Identity(), "srb_elbow_0", "srb_base");
+        publishTF(ik_result_.elb_1, Eigen::Quaternionf::Identity(), "srb_elbow_1", "srb_base");
+        publishTF(ik_result_.elb_2, Eigen::Quaternionf::Identity(), "srb_elbow_2", "srb_base");
 
         // End-effector: let's treat the “endpoint” from the IK result as a single final frame
-        Eigen::Vector3f pos_yc_ee = -(ik_result_.l) * Eigen::Vector3f(0.0, 1.0, 0.0);
+        Eigen::Vector3f pos_yc_ee = (ik_result_.r_s - ik_result_.d) * cga_utils::G2R(e_principal_);
         publishTF(pos_yc_ee, Eigen::Quaternionf::Identity(), "srb_ee", "srb_epl_c");
 
-        // Debugging
-        // Compute the are of the end-plate triangle
-        Eigen::Vector3f v1 = ik_result_.y1 - ik_result_.y0;
-        Eigen::Vector3f v2 = ik_result_.y2 - ik_result_.y0;
-        float A_tri_ep = (0.5 * v1.cross(v2)).norm();
-        // std::cout << "A_tri_ep = " << A_tri_ep << std::endl;
+        // // Debugging
+        // // Compute the are of the end-plate triangle
+        // Eigen::Vector3f v1 = ik_result_.epl_1 - ik_result_.epl_0;
+        // Eigen::Vector3f v2 = ik_result_.epl_2 - ik_result_.epl_0;
+        // float A_tri_ep = (0.5 * v1.cross(v2)).norm();
+        // // std::cout << "A_tri_ep = " << A_tri_ep << std::endl;
 
-        // Compare the lengths
-        float d_rc_yc = (ik_result_.yc - ik_result_.rotation_centre).norm();
-        float d_rc_y0 = (ik_result_.yc - ik_result_.y0).norm();
-
-
-        std::cout << "d = " << ik_result_.d << std::endl;
-        std::cout << "d_rc_yc = " << d_rc_yc << std::endl;
-        std::cout << "d_rc_y0 = " << d_rc_y0 << std::endl;
-
-        // std::cout << "(l - d_rc_yc) / l= " << (ik_result_.l - d_rc_yc) / ik_result_.l << std::endl;
-
+        // // Compare the lengths
+        // std::cout << "r_s = d_rc_yi = " << ik_result_.r_s << std::endl;
+        // std::cout << "d = d_rc_yc = " << ik_result_.d << std::endl;
 
 
         // Publish markers
@@ -266,9 +285,9 @@ private:
                          0,                // marker_id
                          "srb_ee",         // ns
                          "srb_base",       // frame_id
-                         ik_result_.y0,
-                         ik_result_.y1,
-                         ik_result_.y2,
+                         ik_result_.epl_0,
+                         ik_result_.epl_1,
+                         ik_result_.epl_2,
                          1.0f, 0.0f, 0.0f, 1.0f // RGBA
                         );
         
@@ -278,9 +297,9 @@ private:
                          0,                // marker_id
                          "srb_base",         // ns
                          "srb_base",       // frame_id
-                         ik_result_.m0,
-                         ik_result_.m1,
-                         ik_result_.m2,
+                         ik_result_.m_0,
+                         ik_result_.m_1,
+                         ik_result_.m_2,
                          1.0f, 0.0f, 0.0f, 1.0f // RGBA
                         );
         
@@ -290,9 +309,9 @@ private:
                          0,                // marker_id
                          "srb_ltri_0",         // ns
                          "srb_base",       // frame_id
-                         ik_result_.rotation_centre,
-                         ik_result_.elb0,
-                         ik_result_.m0,
+                         ik_result_.rot_cen,
+                         ik_result_.elb_0,
+                         ik_result_.m_0,
                          0.0f, 1.0f, 0.0f, 1.0f // RGBA
                         );
         
@@ -301,9 +320,9 @@ private:
                          0,                // marker_id
                          "srb_ltri_1",         // ns
                          "srb_base",       // frame_id
-                         ik_result_.rotation_centre,
-                         ik_result_.elb1,
-                         ik_result_.m1,
+                         ik_result_.rot_cen,
+                         ik_result_.elb_1,
+                         ik_result_.m_1,
                          0.0f, 1.0f, 0.0f, 1.0f // RGBA
                         );
         
@@ -312,9 +331,9 @@ private:
                          0,                // marker_id
                          "srb_ltri_2",         // ns
                          "srb_base",       // frame_id
-                         ik_result_.rotation_centre,
-                         ik_result_.elb2,
-                         ik_result_.m2,
+                         ik_result_.rot_cen,
+                         ik_result_.elb_2,
+                         ik_result_.m_2,
                          0.0f, 1.0f, 0.0f, 1.0f // RGBA
                         );
 
@@ -324,9 +343,9 @@ private:
                          0,                // marker_id
                          "srb_utri_0",         // ns
                          "srb_base",       // frame_id
-                         ik_result_.rotation_centre,
-                         ik_result_.elb0,
-                         ik_result_.y0,
+                         ik_result_.rot_cen,
+                         ik_result_.elb_0,
+                         ik_result_.epl_0,
                          0.0f, 0.0f, 1.0f, 1.0f // RGBA
                         );
         
@@ -335,9 +354,9 @@ private:
                          0,                // marker_id
                          "srb_utri_1",         // ns
                          "srb_base",       // frame_id
-                         ik_result_.rotation_centre,
-                         ik_result_.elb1,
-                         ik_result_.y1,
+                         ik_result_.rot_cen,
+                         ik_result_.elb_1,
+                         ik_result_.epl_1,
                          0.0f, 0.0f, 1.0f, 1.0f // RGBA
                         );
         
@@ -346,9 +365,9 @@ private:
                          0,                // marker_id
                          "srb_utri_2",         // ns
                          "srb_base",       // frame_id
-                         ik_result_.rotation_centre,
-                         ik_result_.elb2,
-                         ik_result_.y2,
+                         ik_result_.rot_cen,
+                         ik_result_.elb_2,
+                         ik_result_.epl_2,
                          0.0f, 0.0f, 1.0f, 1.0f // RGBA
                         );
 
