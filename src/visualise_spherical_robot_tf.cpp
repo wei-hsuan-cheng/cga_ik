@@ -8,7 +8,6 @@
 #include <Eigen/Dense>
 #include <chrono>
 #include <memory>
-#include <cmath>
 
 #include "cga_ik/cga_utils.hpp"
 #include "cga_ik_spherical_robot/cga_ik_spherical_robot.hpp"
@@ -22,21 +21,25 @@ public:
   VisualiseSphericalRobotTF()
   : Node("visualise_spherical_robot_tf")
   {
+    // Initialise time spec
+    initTimeSpec();
+    // Initialise CGA IK for spherical robot
+    initSRBIK();
+
+
     // Set up a TF broadcaster
     tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
-    // Frequency ~ 30 Hz
+    // Timer
     timer_ = this->create_wall_timer(
-      std::chrono::milliseconds(33),  // ~30 fps
-      std::bind(&VisualiseSphericalRobotTF::timerCallback, this));
+      std::chrono::milliseconds(static_cast<int>(Ts_ * 1000)),
+      std::bind(&VisualiseSphericalRobotTF::timerCallback, this)
+    );
 
-    // We’ll publish the spherical robot’s joint angles (3 DoF)
+    // Publishers
     joint_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/spherical_robot/joint_states", 10);
-
-    // We can also publish a Float64MultiArray if you want to replicate that
     angles_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/spherical_robot/angles_array", 10);
 
-    // Publisher for a Marker that draws the triangle end-plate
     srb_ee_marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ee", 10);
     srb_base_marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_base", 10);
     srb_ltri_0_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ltri_0", 10);
@@ -46,10 +49,7 @@ public:
     srb_utri_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_utri_1", 10);
     srb_utri_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_utri_2", 10);
 
-    // Initialise time spec
-    initTimeSpec();
-    // Initialise CGA IK for spherical robot
-    initSRBIK();
+    
 
     RCLCPP_INFO(this->get_logger(), "visualise_spherical_robot_tf node started.");
   }
@@ -79,6 +79,7 @@ private:
     float r_b_, r_e_;
     cga_ik_spherical_robot::SphericalRobotIKResult ik_result_;
     
+
     void initTimeSpec()
     {
         fs_ = 30.0;
@@ -89,11 +90,11 @@ private:
     void initSRBIK()
     {
         r_b_ = 0.5f;
-        r_e_ = 0.4f;
+        r_e_ = 0.3f;
         ik_result_ = cga_ik_spherical_robot::computeSphericalRobotIK(Eigen::Quaternionf(1.0f, 0.0f, 0.0f, 0.0f), r_b_, r_e_);
     }
 
-    void publishPointAsTF(const Eigen::Vector3f &p, const std::string &child, const std::string &parent)
+    void publishTF(const Eigen::Vector3f &p, const Eigen::Quaternionf &q, const std::string &child, const std::string &parent)
     {
         geometry_msgs::msg::TransformStamped tf;
         tf.header.stamp = this->now();
@@ -104,10 +105,10 @@ private:
         tf.transform.translation.z = p.z();
 
         // No orientation, so we set identity
-        tf.transform.rotation.x = 0.0;
-        tf.transform.rotation.y = 0.0;
-        tf.transform.rotation.z = 0.0;
-        tf.transform.rotation.w = 1.0;
+        tf.transform.rotation.w = q.w();
+        tf.transform.rotation.x = q.x();
+        tf.transform.rotation.y = q.y();
+        tf.transform.rotation.z = q.z();
 
         tf_broadcaster_->sendTransform(tf);
     };
@@ -126,7 +127,7 @@ private:
         float a_color   // Alpha [0..1]
     )
     {
-        // Build a TRIANGLE_LIST marker from the 3 points p0, p1, p2
+        // Build a TRIANGLE_LIST marker from the 3 points x0p0, p1, p2
         visualization_msgs::msg::Marker tri_marker;
         tri_marker.header.stamp = this->now();
         tri_marker.header.frame_id = frame_id;
@@ -176,6 +177,7 @@ private:
         // 2) Target orientation for the IK problem
         float freq = 0.1;  // [cycles/callback]
         float th = (0.25 * M_PI) * std::sin(2.0 * M_PI * freq * t_);
+        // float th = 0.0;
 
         // Vector4d axis_ang(0.0, 0.0, 1.0, (double) th);
         // Vector4d axis_ang(0.0, 1.0, 0.0, (double) th);
@@ -215,25 +217,40 @@ private:
         }
 
         // Extract each motor in 3D:
-        publishPointAsTF(ik_result_.m0, "srb_motor_0", "srb_base");
-        publishPointAsTF(ik_result_.m1, "srb_motor_1", "srb_base");
-        publishPointAsTF(ik_result_.m2, "srb_motor_2", "srb_base");
+        publishTF(ik_result_.m0, Eigen::Quaternionf::Identity(), "srb_motor_0", "srb_base");
+        publishTF(ik_result_.m1, Eigen::Quaternionf::Identity(), "srb_motor_1", "srb_base");
+        publishTF(ik_result_.m2, Eigen::Quaternionf::Identity(), "srb_motor_2", "srb_base");
 
         // Rotation centre of the robot
-        publishPointAsTF(ik_result_.rotation_centre, "srb_rot_cen", "srb_base");
+        publishTF(ik_result_.rotation_centre, Eigen::Quaternionf::Identity(), "srb_rot_cen", "srb_base");
 
-        // For publishing y0, y1, and y2
-        publishPointAsTF(ik_result_.y0, "srb_y_0", "srb_base");
-        publishPointAsTF(ik_result_.y1, "srb_y_1", "srb_base");
-        publishPointAsTF(ik_result_.y2, "srb_y_2", "srb_base");
+        // For publishing y0, y1, and y2 (end-plate corners)
+        publishTF(ik_result_.y0, quat, "srb_epl_0", "srb_base");
+        publishTF(ik_result_.y1, quat, "srb_epl_1", "srb_base");
+        publishTF(ik_result_.y2, quat, "srb_epl_2", "srb_base");
+        publishTF(ik_result_.yc, quat, "srb_epl_c", "srb_base");
 
         // Elbow frames: use (ik_result_.elb0, elb1, elb2)
-        publishPointAsTF(ik_result_.elb0, "srb_elbow_0", "srb_base");
-        publishPointAsTF(ik_result_.elb1, "srb_elbow_1", "srb_base");
-        publishPointAsTF(ik_result_.elb2, "srb_elbow_2", "srb_base");
+        publishTF(ik_result_.elb0, Eigen::Quaternionf::Identity(), "srb_elbow_0", "srb_base");
+        publishTF(ik_result_.elb1, Eigen::Quaternionf::Identity(), "srb_elbow_1", "srb_base");
+        publishTF(ik_result_.elb2, Eigen::Quaternionf::Identity(), "srb_elbow_2", "srb_base");
 
         // End-effector: let's treat the “endpoint” from the IK result as a single final frame
-        publishPointAsTF(ik_result_.endpoint, "srb_ee", "srb_base");
+        Eigen::Vector3f pos_yc_ee = -(ik_result_.l) * Eigen::Vector3f(0.0, 1.0, 0.0);
+        publishTF(pos_yc_ee, Eigen::Quaternionf::Identity(), "srb_ee", "srb_epl_c");
+
+        // // Debugging
+        // // Compute the are of the end-plate triangle
+        // Eigen::Vector3f v1 = ik_result_.y1 - ik_result_.y0;
+        // Eigen::Vector3f v2 = ik_result_.y2 - ik_result_.y0;
+        // float A_tri_ep = (0.5 * v1.cross(v2)).norm();
+        // std::cout << "A_tri_ep = " << A_tri_ep << std::endl;
+
+        // // Compare the lengths
+        // float l_prime = (ik_result_.yc - ik_result_.rotation_centre).norm();
+        // std::cout << "l - l_prime = " << ik_result_.l - l_prime << std::endl;
+
+
 
         // Publish markers
         // End-plate (end-effector)
@@ -245,7 +262,7 @@ private:
                          ik_result_.y0,
                          ik_result_.y1,
                          ik_result_.y2,
-                         1.0f, 0.0f, 0.0f, 1.0f // RGBA for red
+                         1.0f, 0.0f, 0.0f, 1.0f // RGBA
                         );
         
         // Base
@@ -257,7 +274,7 @@ private:
                          ik_result_.m0,
                          ik_result_.m1,
                          ik_result_.m2,
-                         0.0f, 0.0f, 0.0f, 1.0f // RGBA for red
+                         1.0f, 0.0f, 0.0f, 1.0f // RGBA
                         );
         
         // Lower triangles for centre-elb-motor
@@ -269,7 +286,7 @@ private:
                          ik_result_.rotation_centre,
                          ik_result_.elb0,
                          ik_result_.m0,
-                         0.0f, 1.0f, 0.0f, 1.0f // RGBA for red
+                         0.0f, 1.0f, 0.0f, 1.0f // RGBA
                         );
         
         publishTriMarker(
@@ -280,7 +297,7 @@ private:
                          ik_result_.rotation_centre,
                          ik_result_.elb1,
                          ik_result_.m1,
-                         0.0f, 1.0f, 0.0f, 1.0f // RGBA for red
+                         0.0f, 1.0f, 0.0f, 1.0f // RGBA
                         );
         
         publishTriMarker(
@@ -291,7 +308,7 @@ private:
                          ik_result_.rotation_centre,
                          ik_result_.elb2,
                          ik_result_.m2,
-                         0.0f, 1.0f, 0.0f, 1.0f // RGBA for red
+                         0.0f, 1.0f, 0.0f, 1.0f // RGBA
                         );
 
         // Upper triangles for centre-elb-plate
@@ -303,7 +320,7 @@ private:
                          ik_result_.rotation_centre,
                          ik_result_.elb0,
                          ik_result_.y0,
-                         0.0f, 0.0f, 1.0f, 1.0f // RGBA for red
+                         0.0f, 0.0f, 1.0f, 1.0f // RGBA
                         );
         
         publishTriMarker(
@@ -314,7 +331,7 @@ private:
                          ik_result_.rotation_centre,
                          ik_result_.elb1,
                          ik_result_.y1,
-                         0.0f, 0.0f, 1.0f, 1.0f // RGBA for red
+                         0.0f, 0.0f, 1.0f, 1.0f // RGBA
                         );
         
         publishTriMarker(
@@ -325,7 +342,7 @@ private:
                          ik_result_.rotation_centre,
                          ik_result_.elb2,
                          ik_result_.y2,
-                         0.0f, 0.0f, 1.0f, 1.0f // RGBA for red
+                         0.0f, 0.0f, 1.0f, 1.0f // RGBA
                         );
 
 

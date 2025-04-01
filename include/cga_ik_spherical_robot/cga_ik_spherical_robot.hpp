@@ -1,7 +1,8 @@
+// This algorithm is based on: https://slides.com/hugohadfield/game2020
+
 #ifndef CGA_IK_SPHERICAL_ROBOT_HPP
 #define CGA_IK_SPHERICAL_ROBOT_HPP
 
-#include <cmath>        // for std::acos, std::sqrt
 #include <Eigen/Dense>
 #include "cga_ik/cga_utils.hpp"
 #include "robot_math_utils/robot_math_utils_v1_9.hpp"
@@ -14,40 +15,60 @@ using RM = RMUtils;
 namespace cga_ik_spherical_robot {
 
 // A small helper to compute the Euclidean angle between two 3D vectors.
-inline float angleBetween(const Eigen::Vector3f &v1, const Eigen::Vector3f &v2)
+inline float angleBetweenVecs(const Eigen::Vector3f &v1, const Eigen::Vector3f &v2)
 {
     float dotVal = v1.dot(v2);
     float norms  = v1.norm() * v2.norm();
     if (norms < 1e-9f) {
         return 0.0f; // handle degenerate case
     }
-    float cosVal = dotVal / norms;
-    // Clamp numerical error for safe acos:
-    if (cosVal > 1.0f)  cosVal = 1.0f;
-    if (cosVal < -1.0f) cosVal = -1.0f;
-    return std::acos(cosVal); // returns angle in [0, π]
+    return (float) RM::ArcCos( (double) dotVal / norms ); // returns angle in [0, π]
 }
 
-// This struct holds elbow data and the “motor angle” for a single motor’s solution.
-struct MotorIKResult {
-    CGA elbowPoint;  // conformal representation of the elbow
-    float angleRad;       // angle at the motor (in radians)
-};
+float solveJointAngle(const CGA &o, const CGA &m, const CGA &c, const CGA &y)
+{
+    Eigen::Vector3f normal_cmo = 
+    ( cga_utils::G2R( down(o) ) - cga_utils::G2R(m) ).cross( cga_utils::G2R(c) - cga_utils::G2R(m) );
+    normal_cmo = normal_cmo.normalized();
+
+    Eigen::Vector3f normal_ymc = 
+    ( cga_utils::G2R(c) - cga_utils::G2R(m) ).cross( cga_utils::G2R( down(y) ) - cga_utils::G2R(m) );
+    normal_ymc = normal_ymc.normalized();
+    
+    // Compute axis-angle representation
+    Eigen::Vector3f axis_cross = normal_cmo.cross(normal_ymc);
+    float ang_cross = angleBetweenVecs(normal_cmo, normal_ymc);
+    // Check if axis_cross (axis of rotation) is in the same direction as l_vec (from motor to centre)
+    Eigen::Vector3f l_vec = (cga_utils::G2R(c) - cga_utils::G2R(m)).normalized();
+    float ang = axis_cross(0) / l_vec(0) >= 0 ? ang_cross : -ang_cross;
+    
+    // // Debugging
+    // std::cout << "normal_cmo: " << normal_cmo.transpose() << std::endl;
+    // std::cout << "normal_ymc: " << normal_ymc.transpose() << std::endl;
+    // std::cout << "axis_cross: " << axis_cross.transpose() << std::endl;
+    // Eigen::Vector3f axis_div = axis_cross.cwiseQuotient(l_vec); // entry-wise division for axis_cross and l_vec
+    // std::cout << "axis_div: " << axis_div.transpose() << std::endl;
+    // std::cout << "ang_cross [deg] = " << ang_cross * RM::r2d << std::endl;
+    // std::cout << "ang [deg] = " << ang * RM::r2d << std::endl;
+
+    return ang;
+}
 
 // This struct holds the final output of the single-orientation IK.
 struct SphericalRobotIKResult {
     float r_b, r_e;
     Eigen::Vector3f m0, m1, m2;           // motor (pivot) positions
     Eigen::Vector3f rotation_centre;      // rotation centre of the robot
-    Eigen::Vector3f y0, y1, y2;           // end-plate corners
+    float l, d;
+    Eigen::Vector3f y0, y1, y2, yc;           // end-plate corners and centre
     Eigen::Vector3f elb0, elb1, elb2;     // elbow positions
-    Eigen::Vector3f endpoint;             // final “end point”
     float angle0, angle1, angle2;  // motor angles (in radians)
 };
 
 // A function that takes in the quaternion
 // and returns the full IK results of the 3-DoF spherical robot.
 inline SphericalRobotIKResult computeSphericalRobotIK(
+    // Quaternion orientation
     Eigen::Quaternionf quat,
     // geometry parameters:
     float r_b, float r_e
@@ -103,6 +124,11 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
     CGA y1 = up(R_ee * x1 * ~R_ee + rotation_centre);
     CGA y2 = up(R_ee * x2 * ~R_ee + rotation_centre);
 
+    // End-plate centre
+    CGA pos_y0_yc =  R_ee * (-r_e * s0) * ~R_ee;
+    CGA Tr_y0_yc = cga_utils::trans( pos_y0_yc );
+    CGA yc = Tr_y0_yc * y0 * ~Tr_y0_yc;
+
     // Build translator for each corner
     CGA Tx0 = CGA(1.0f,0) + 0.5f * ((R_ee*x0*~R_ee) ^ ni);
     CGA planeFactor0 = ((S|y0) ^ ni).normalized();
@@ -141,32 +167,13 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
     float invLenT2 = 1.0f / std::sqrt(std::fabs(T2sqVal));
     CGA elb2 = (CGA(1.0f,0) + T2 * invLenT2) * (T2 | ni);
 
-    // End point
-    CGA triProduct = (y0 ^ y1 ^ y2 ^ ni);
-    CGA endpoint = (triProduct * up_rotation_centre) * triProduct;
 
     // Now compute the IK solutions (motor angles)
-    // We'll define a little helper to get the 3D vector from elbow -> rotation_centre
-    // and from elbow -> motor pivot, then find angleBetween.
-    Eigen::Vector3f rc3 = cga_utils::G2R( down(up(rotation_centre)) );
 
-    auto getL1 = [&](const CGA &elb) -> Eigen::Vector3f {
-        Eigen::Vector3f e = cga_utils::G2R( down(elb) );
-        return rc3 - e; // elbow -> rotation_centre
-    };
-    auto getL2 = [&](const CGA &elb, const CGA &s_i) -> Eigen::Vector3f {
-        CGA pivotCga = up(r_b*s_i + rotation_centre);
-        Eigen::Vector3f pivot3 = cga_utils::G2R( down(pivotCga) );
-        Eigen::Vector3f e = cga_utils::G2R( down(elb) );
-        
-        return pivot3 - e; // elbow -> motor pivot
-    };
-
-
-    // Test: inner product to compute the angle between two planes
-    CGA plane_base = up(r_b * s0) ^ up(r_b * s1) ^ up(r_b * s2) ^ ni;
-    CGA plane_mcy0 = up(r_b * s0) ^ up_rotation_centre ^ y0 ^ ni;
-    CGA plane_mco0 = up(r_b * s0) ^ up_rotation_centre ^ no ^ ni;
+    // (Still problematic) Inner product to compute the angle between two planes
+    // CGA plane_base = up(r_b * s0) ^ up(r_b * s1) ^ up(r_b * s2) ^ ni;
+    // CGA plane_mcy0 = up(r_b * s0) ^ up_rotation_centre ^ y0 ^ ni;
+    // CGA plane_mco0 = up(r_b * s0) ^ up_rotation_centre ^ no ^ ni;
     
     // CGA plane_0 = plane_mcy0.normalized();
     // CGA plane_compare0 = plane_mco0.normalized();
@@ -186,34 +193,11 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
     // std::cout << "ang0 = "; (ang * RM::r2d).log();
 
 
-    // Test: cross product to compute the angle between two planes
-    Eigen::Vector3f normal_mcy0 = 
-    ( cga_utils::G2R(r_b * s0) - cga_utils::G2R(rotation_centre) ).cross( cga_utils::G2R( down(y0) ) - cga_utils::G2R(rotation_centre) );
-    Eigen::Vector3f normal_mco0 = 
-    ( cga_utils::G2R(r_b * s0) - cga_utils::G2R(rotation_centre) ).cross( cga_utils::G2R( down(no) ) - cga_utils::G2R(rotation_centre) );
-
-    normal_mcy0 = normal_mcy0.normalized();
-    normal_mco0 = -normal_mco0.normalized();
-
-    // Compute axis-angle representation
-    // std::cout << "normal_mcy0 = " << normal_mcy0.transpose() << std::endl;
-    // std::cout << "normal_mco0 = " << normal_mco0.transpose() << std::endl;
-    Eigen::Vector3f axis_cross = normal_mcy0.cross(normal_mco0);
-    // std::cout << "axis_cross = " << axis_cross << std::endl;
-
-    float ang_cross = angleBetween(normal_mcy0, normal_mco0);
-    // std::cout << "ang_cross = " << ang_cross * RM::r2d << std::endl;
-
-    float ang0 = axis_cross(0) >= 0 ? ang_cross : -ang_cross;
-    std::cout << "ang0 = " << ang0 * RM::r2d << std::endl;
-
-
-
-
-    float angle0 = angleBetween(getL1(elb0), getL2(elb0, s0));
-    float angle1 = angleBetween(getL1(elb1), getL2(elb1, s1));
-    float angle2 = angleBetween(getL1(elb2), getL2(elb2, s2));
-
+    // Cross product to compute the angle between two planes
+    float angle0, angle1, angle2;
+    angle0 = solveJointAngle(no, r_b * s0, rotation_centre, y0);
+    angle1 = solveJointAngle(no, r_b * s1, rotation_centre, y1);
+    angle2 = solveJointAngle(no, r_b * s2, rotation_centre, y2);
 
     // Assemble results:
     SphericalRobotIKResult result;
@@ -223,13 +207,15 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
     result.m1 = cga_utils::G2R(r_b * s1);
     result.m2 = cga_utils::G2R(r_b * s2);
     result.rotation_centre = cga_utils::G2R(rotation_centre);
+    result.d = d;
+    result.l = l;
     result.y0 = cga_utils::G2R( down(y0) );
     result.y1 = cga_utils::G2R( down(y1) );
     result.y2 = cga_utils::G2R( down(y2) );
+    result.yc = cga_utils::G2R( down(yc) );
     result.elb0 = cga_utils::G2R( down(elb0) );
     result.elb1 = cga_utils::G2R( down(elb1) );
     result.elb2 = cga_utils::G2R( down(elb2) );
-    result.endpoint = cga_utils::G2R( down(endpoint) );
     result.angle0 = angle0;
     result.angle1 = angle1;
     result.angle2 = angle2;
@@ -267,7 +253,7 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
 // namespace cga_ik_spherical_robot {
 
 // // A small helper to compute the Euclidean angle between two 3D vectors.
-// inline float angleBetween(const Eigen::Vector3f &v1, const Eigen::Vector3f &v2)
+// inline float angleBetweenVecs(const Eigen::Vector3f &v1, const Eigen::Vector3f &v2)
 // {
 //     float dotVal = v1.dot(v2);
 //     float norms  = v1.norm() * v2.norm();
@@ -280,12 +266,6 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
 //     if (cosVal < -1.0f) cosVal = -1.0f;
 //     return std::acos(cosVal); // returns angle in [0, π]
 // }
-
-// // This struct holds elbow data and the “motor angle” for a single motor’s solution.
-// struct MotorIKResult {
-//     CGA elbowPoint;  // conformal representation of the elbow
-//     float angleRad;       // angle at the motor (in radians)
-// };
 
 // // This struct holds the final output of the single-orientation IK.
 // struct SphericalRobotIKResult {
@@ -396,7 +376,7 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
 
 //     // Now compute the angles at each motor
 //     // We'll define a little helper to get the 3D vector from elbow -> rotation_centre
-//     // and from elbow -> motor pivot, then find angleBetween.
+//     // and from elbow -> motor pivot, then find angleBetweenVecs.
 //     Eigen::Vector3f rc3 = cga_utils::G2R( down(up(rotation_centre)) );
 
 //     auto getL1 = [&](const CGA &elb) -> Eigen::Vector3f {
@@ -411,9 +391,9 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
 //         return pivot3 - e; // elbow -> motor pivot
 //     };
 
-//     float angle0 = angleBetween(getL1(elb0), getL2(elb0, s0));
-//     float angle1 = angleBetween(getL1(elb1), getL2(elb1, s1));
-//     float angle2 = angleBetween(getL1(elb2), getL2(elb2, s2));
+//     float angle0 = angleBetweenVecs(getL1(elb0), getL2(elb0, s0));
+//     float angle1 = angleBetweenVecs(getL1(elb1), getL2(elb1, s1));
+//     float angle2 = angleBetweenVecs(getL1(elb2), getL2(elb2, s2));
 
 //     // Assemble results:
 //     SphericalRobotIKResult result;
