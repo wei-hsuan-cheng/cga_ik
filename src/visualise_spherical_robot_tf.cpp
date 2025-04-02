@@ -207,9 +207,9 @@ private:
         float th = (0.25 * M_PI) * std::sin(2.0 * M_PI * freq * t_);
         // float th = 0.0;
 
-        Vector4d axis_ang(0.0, 0.0, 1.0, (double) th);
+        // Vector4d axis_ang(0.0, 0.0, 1.0, (double) th);
         // Vector4d axis_ang(0.0, 1.0, 0.0, (double) th);
-        // Vector4d axis_ang(1.0, 0.0, 0.0, (double) th);
+        Vector4d axis_ang(1.0, 0.0, 0.0, (double) th);
 
         Vector3d so3 = (axis_ang.head(3)).normalized() * axis_ang(3);
         quat_cmd_ = RM::so32Quat(so3).cast<float>();
@@ -254,14 +254,19 @@ private:
         }
 
         // Motors of the robot
-        publishTF(ik_result_.m_0, ik_result_.quat_m_0, "srb_motor_0", "srb_base");
         publishTF(ik_result_.m_0, ik_result_.quat_m_0_i, "srb_motor_0_i", "srb_base");
+        publishTF(ik_result_.m_0, ik_result_.quat_m_0, "srb_motor_0", "srb_base");
+        
+        publishTF(ik_result_.m_1, ik_result_.quat_m_1_i, "srb_motor_1_i", "srb_base");
+        publishTF(ik_result_.m_1, ik_result_.quat_m_1, "srb_motor_1", "srb_base");
 
-        publishTF(ik_result_.m_1, Eigen::Quaternionf::Identity(), "srb_motor_1", "srb_base");
-        publishTF(ik_result_.m_2, Eigen::Quaternionf::Identity(), "srb_motor_2", "srb_base");
+        publishTF(ik_result_.m_2, ik_result_.quat_m_2_i, "srb_motor_2_i", "srb_base");
+        publishTF(ik_result_.m_2, ik_result_.quat_m_2, "srb_motor_2", "srb_base");
+
 
         // Rotation centre
         publishTF(ik_result_.rot_cen, Eigen::Quaternionf::Identity(), "srb_rot_cen", "srb_base");
+
 
         // End-plate corners and centre 
         publishTF(ik_result_.epl_0, ik_result_.quat_epl_0, "srb_epl_0", "srb_base");
@@ -269,10 +274,12 @@ private:
         publishTF(ik_result_.epl_2, ik_result_.quat_epl_2, "srb_epl_2", "srb_base");
         publishTF(ik_result_.epl_c, ik_result_.quat_epl_c, "srb_epl_c", "srb_base");
 
+
         // Elbows
         publishTF(ik_result_.elb_0, Eigen::Quaternionf::Identity(), "srb_elbow_0", "srb_base");
         publishTF(ik_result_.elb_1, Eigen::Quaternionf::Identity(), "srb_elbow_1", "srb_base");
         publishTF(ik_result_.elb_2, Eigen::Quaternionf::Identity(), "srb_elbow_2", "srb_base");
+
 
         // End-effector
         Eigen::Vector3f pos_yc_ee = (ik_result_.r_s - ik_result_.d) * cga_utils::G2R(e_principal_);
@@ -387,25 +394,6 @@ private:
         // // Compare the lengths
         // std::cout << "r_s = d_rc_yi = " << ik_result_.r_s << std::endl;
         // std::cout << "d = d_rc_yc = " << ik_result_.d << std::endl;
-
-        // // Compare IK solutions
-        // Quaterniond quat_m_0_d = ik_result_.quat_m_0.cast<double>();
-        // Quaterniond quat_m_0_i_d = ik_result_.quat_m_0_i.cast<double>();
-        // Quaterniond quat_m_0_i_ik_d = ik_result_.quat_m_0_i_ik.cast<double>();
-
-        // // quat_m_0 v.s. quat_m_0_i
-        // Quaterniond quat_m_i_m_0_d = RM::InvQuat(quat_m_0_i_d) * quat_m_0_d;
-        // Vector4d axis_ang_m_i_m_0 = RM::AxisAng3( RM::Quat2so3(quat_m_i_m_0_d) );
-        // std::cout << "axis_0 = " << axis_ang_m_i_m_0.head(3).transpose() << std::endl;
-        // std::cout << "theta_0 = " << axis_ang_m_i_m_0(3) * RM::r2d << std::endl;
-        // std::cout << "--------------------------------" << std::endl;
-
-        // // quat_m_0 v.s. quat_m_0_i_ik
-        // Quaterniond quat_m_i_m_0_ik_d = RM::InvQuat(quat_m_0_i_ik_d) * quat_m_0_d;
-        // Vector4d axis_ang_m_i_m_0_ik = RM::AxisAng3( RM::Quat2so3(quat_m_i_m_0_ik_d) );
-        // std::cout << "axis_0_ik = " << axis_ang_m_i_m_0_ik.head(3).transpose() << std::endl;
-        // std::cout << "theta_0_ik = " << axis_ang_m_i_m_0_ik(3) * RM::r2d << std::endl;
-        // std::cout << "--------------------------------" << std::endl;
 
 
     }

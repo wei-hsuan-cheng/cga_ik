@@ -87,6 +87,13 @@ Eigen::Quaternionf computeMotorInitalQuat(const CGA &m, const CGA &rc)
     return Eigen::Quaternionf(RMat_i);
 }
 
+float computeRelativeAngle(const Eigen::Quaternionf & quat_0_1, const Eigen::Quaternionf & quat_0_2)
+{
+    Quaterniond quat_1_2 = RM::InvQuat( quat_0_1.cast<double>() ) * quat_0_2.cast<double>();
+    Vector4d axis_ang_1_2 = RM::AxisAng3( RM::Quat2so3(quat_1_2) );
+    return axis_ang_1_2(2) > 0 ? axis_ang_1_2(3) : -axis_ang_1_2(3);
+}
+
 
 // This struct holds the final output of the single-orientation IK.
 struct SphericalRobotIKResult {
@@ -222,16 +229,32 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
     CGA elb_2 = (CGA(1.0f,0) + T_2 * invLen_T_2) * (T_2 | ni);
 
 
-    // Now compute the IK solutions (motor angles)
-    // Cross product to compute the angle between two planes
-    float th_0 = solveJointAngle(no, m_0, rot_cen, epl_0);
-    float th_1 = solveJointAngle(no, m_1, rot_cen, epl_1);
-    float th_2 = solveJointAngle(no, m_2, rot_cen, epl_2);
-
-
     // Quaternion orientation for each motor
-    Eigen::Quaternionf quat_m_0 = computeMotorQuat(m_0, rot_cen, epl_0);
     Eigen::Quaternionf quat_m_0_i = computeMotorInitalQuat(m_0, rot_cen);
+    Eigen::Quaternionf quat_m_0 = computeMotorQuat(m_0, rot_cen, epl_0);
+
+    Eigen::Quaternionf quat_m_1_i = computeMotorInitalQuat(m_1, rot_cen);
+    Eigen::Quaternionf quat_m_1 = computeMotorQuat(m_1, rot_cen, epl_1);
+    
+    Eigen::Quaternionf quat_m_2_i = computeMotorInitalQuat(m_2, rot_cen);
+    Eigen::Quaternionf quat_m_2 = computeMotorQuat(m_2, rot_cen, epl_2);
+
+
+    // Compute the IK solutions (motor angles)
+
+    // // Cross product to compute the angle between two planes
+    // float th_0 = solveJointAngle(no, m_0, rot_cen, epl_0);
+    // float th_1 = solveJointAngle(no, m_1, rot_cen, epl_1);
+    // float th_2 = solveJointAngle(no, m_2, rot_cen, epl_2);
+
+    // Compute angle between two motor orientations
+    float th_0 = computeRelativeAngle(quat_m_0_i, quat_m_0);
+    float th_1 = computeRelativeAngle(quat_m_1_i, quat_m_1);
+    float th_2 = computeRelativeAngle(quat_m_2_i, quat_m_2);
+
+    
+
+
     
 
     // Assemble results:
@@ -247,8 +270,11 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
     result.m_2 = cga_utils::G2R(m_2);
     result.quat_m_0_i = quat_m_0_i;
     result.quat_m_0 = quat_m_0;
+    result.quat_m_1_i = quat_m_1_i;
+    result.quat_m_1 = quat_m_1;
+    result.quat_m_2_i = quat_m_2_i;
+    result.quat_m_2 = quat_m_2;
     
-
     result.epl_0 = cga_utils::G2R( down(epl_0) );
     result.epl_1 = cga_utils::G2R( down(epl_1) );
     result.epl_2 = cga_utils::G2R( down(epl_2) );
