@@ -7,6 +7,20 @@
 #include "cga_ik/cga_utils.hpp"
 #include "robot_math_utils/robot_math_utils_v1_9.hpp"
 
+using Eigen::Quaternionf;
+using Eigen::Matrix2f;
+using Eigen::Matrix3f;
+using Eigen::Matrix4f;
+using Eigen::MatrixXf;
+
+using Matrix6f = Eigen::Matrix<float, 6, 6>;
+using Eigen::Vector2f;
+using Eigen::Vector3f;
+using Eigen::Vector4f;
+using Vector6f = Eigen::Matrix<float, 6, 1>;
+using Vector7f = Eigen::Matrix<float, 7, 1>;
+using Eigen::VectorXf;
+
 using cga_utils::up;
 using cga_utils::down;
 using cga_utils::Grade;
@@ -15,7 +29,7 @@ using RM = RMUtils;
 namespace cga_ik_spherical_robot {
 
 // Helper: compute the Euclidean angle between two 3D vectors.
-inline float angleBetweenVecs(const Eigen::Vector3f &v1, const Eigen::Vector3f &v2)
+inline float angleBetweenVecs(const Vector3f &v1, const Vector3f &v2)
 {
     float dotVal = v1.dot(v2);
     float norms  = v1.norm() * v2.norm();
@@ -28,19 +42,19 @@ inline float angleBetweenVecs(const Eigen::Vector3f &v1, const Eigen::Vector3f &
 // Helper: solve the IK joint angle for each motor of the spherical robot.
 float solveJointAngle(const CGA &o, const CGA &m, const CGA &rc, const CGA &epl)
 {
-    Eigen::Vector3f normal_rc_m_o = 
+    Vector3f normal_rc_m_o = 
     ( cga_utils::G2R( down(o) ) - cga_utils::G2R(m) ).cross( cga_utils::G2R(rc) - cga_utils::G2R(m) );
     normal_rc_m_o = normal_rc_m_o.normalized();
 
-    Eigen::Vector3f normal_epl_m_rc = 
+    Vector3f normal_epl_m_rc = 
     ( cga_utils::G2R(rc) - cga_utils::G2R(m) ).cross( cga_utils::G2R( down(epl) ) - cga_utils::G2R(m) );
     normal_epl_m_rc = normal_epl_m_rc.normalized();
     
     // Compute axis-angle representation
-    Eigen::Vector3f axis_cross = normal_rc_m_o.cross(normal_epl_m_rc);
+    Vector3f axis_cross = normal_rc_m_o.cross(normal_epl_m_rc);
     float ang_cross = angleBetweenVecs(normal_rc_m_o, normal_epl_m_rc);
     // Check if axis_cross (axis of rotation) is in the same direction as vec_m_rc (from motor to centre)
-    Eigen::Vector3f vec_m_rc = (cga_utils::G2R(rc) - cga_utils::G2R(m)).normalized();
+    Vector3f vec_m_rc = (cga_utils::G2R(rc) - cga_utils::G2R(m)).normalized();
     float ang = axis_cross(0) / vec_m_rc(0) >= 0 ? ang_cross : -ang_cross;
     
 
@@ -48,7 +62,7 @@ float solveJointAngle(const CGA &o, const CGA &m, const CGA &rc, const CGA &epl)
     // std::cout << "normal_rc_m_o: " << normal_rc_m_o.transpose() << std::endl;
     // std::cout << "normal_epl_m_rc: " << normal_epl_m_rc.transpose() << std::endl;
     // std::cout << "axis_cross: " << axis_cross.transpose() << std::endl;
-    // Eigen::Vector3f axis_div = axis_cross.cwiseQuotient(vec_m_rc); // entry-wise division for axis_cross and vec_m_rc
+    // Vector3f axis_div = axis_cross.cwiseQuotient(vec_m_rc); // entry-wise division for axis_cross and vec_m_rc
     // std::cout << "axis_div: " << axis_div.transpose() << std::endl;
     // std::cout << "ang_cross [deg] = " << ang_cross * RM::r2d << std::endl;
     // std::cout << "ang [deg] = " << ang * RM::r2d << std::endl;
@@ -57,37 +71,39 @@ float solveJointAngle(const CGA &o, const CGA &m, const CGA &rc, const CGA &epl)
 }
 
 // Helper: compute the quaternion orientation of the motor.
-Eigen::Quaternionf computeMotorQuat(const CGA &m, const CGA &rc, const CGA &epl)
+Quaternionf computeMotorQuat(const CGA &m, const CGA &rc, const CGA &epl)
 {
     CGA z_hat = (rc - m).normalized();
     CGA vec_m_epl_0 = (down(epl) - m).normalized();
     CGA x_hat = ( (-1) * e123 * (z_hat ^ vec_m_epl_0) ).normalized(); // Dual 
     CGA y_hat = ( (-1) * e123 * (z_hat ^ x_hat) ).normalized(); // Dual
     
-    Eigen::Matrix3f RMat;
+    Matrix3f RMat;
     RMat << (x_hat | e1)[0], (y_hat | e1)[0], (z_hat | e1)[0],
             (x_hat | e2)[0], (y_hat | e2)[0], (z_hat | e2)[0],
             (x_hat | e3)[0], (y_hat | e3)[0], (z_hat | e3)[0];
     
-    return Eigen::Quaternionf(RMat);
+    return Quaternionf(RMat);
 }
 
-Eigen::Quaternionf computeMotorInitalQuat(const CGA &m, const CGA &rc)
+// Helper: compute the initial quaternion orientation of the motor.
+Quaternionf computeMotorInitalQuat(const CGA &m, const CGA &rc)
 {
     CGA z_hat = (rc - m).normalized();
     CGA vec_m_o_0 = (down(no) - m).normalized();
     CGA x_hat_i = ( (-1) * e123 * (vec_m_o_0 ^ z_hat) ).normalized(); // Dual 
     CGA y_hat_i = ( (-1) * e123 * (z_hat ^ x_hat_i) ).normalized(); // Dual
     
-    Eigen::Matrix3f RMat_i;
+    Matrix3f RMat_i;
     RMat_i << (x_hat_i | e1)[0], (y_hat_i | e1)[0], (z_hat | e1)[0],
               (x_hat_i | e2)[0], (y_hat_i | e2)[0], (z_hat | e2)[0],
               (x_hat_i | e3)[0], (y_hat_i | e3)[0], (z_hat | e3)[0];
     
-    return Eigen::Quaternionf(RMat_i);
+    return Quaternionf(RMat_i);
 }
 
-float computeRelativeAngle(const Eigen::Quaternionf & quat_0_1, const Eigen::Quaternionf & quat_0_2)
+// Helper: compute relative z-angle between two quaternions
+float computeRelativeZAngle(const Quaternionf & quat_0_1, const Quaternionf & quat_0_2)
 {
     Quaterniond quat_1_2 = RM::InvQuat( quat_0_1.cast<double>() ) * quat_0_2.cast<double>();
     Vector4d axis_ang_1_2 = RM::AxisAng3( RM::Quat2so3(quat_1_2) );
@@ -99,17 +115,17 @@ float computeRelativeAngle(const Eigen::Quaternionf & quat_0_1, const Eigen::Qua
 struct SphericalRobotIKResult {
     float r_b, r_e;
     float r_s, d;
-    Eigen::Vector3f rot_cen;      // rotation centre of the robot
+    Vector3f rot_cen;      // rotation centre of the robot
 
-    Eigen::Vector3f m_0, m_1, m_2;           // motor (pivot) positions
-    Eigen::Quaternionf quat_m_0, quat_m_1, quat_m_2; // quaternions for motor orientations
-    Eigen::Quaternionf quat_m_0_i, quat_m_1_i, quat_m_2_i; // initial quaternions for motor orientations
+    Vector3f m_0, m_1, m_2;           // motor (pivot) positions
+    Quaternionf quat_m_0, quat_m_1, quat_m_2; // quaternions for motor orientations
+    Quaternionf quat_m_0_i, quat_m_1_i, quat_m_2_i; // initial quaternions for motor orientations
 
-    Eigen::Vector3f epl_0, epl_1, epl_2, epl_c;           // end-plate corners and centre
-    Eigen::Quaternionf quat_epl_0, quat_epl_1, quat_epl_2, quat_epl_c; // quaternions for end-plate corners and centre
+    Vector3f epl_0, epl_1, epl_2, epl_c;           // end-plate corners and centre
+    Quaternionf quat_epl_0, quat_epl_1, quat_epl_2, quat_epl_c; // quaternions for end-plate corners and centre
     
-    Eigen::Vector3f elb_0, elb_1, elb_2;     // elbow positions
-    Eigen::Quaternionf quat_elb_0, quat_elb_1, quat_elb_2; // quaternions for elbow orientations
+    Vector3f elb_0, elb_1, elb_2;     // elbow positions
+    Quaternionf quat_elb_0, quat_elb_1, quat_elb_2; // quaternions for elbow orientations
     
     float th_0, th_1, th_2;  // motor angles [rad]
 };
@@ -124,7 +140,7 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
     // Two basis vectors on the base plane
     CGA s_0, CGA s_1,
     // Quaternion orientation
-    Eigen::Quaternionf quat,
+    Quaternionf quat,
     // geometry parameters
     float r_b, float r_e) 
 {
@@ -166,7 +182,7 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
 
 
     // Build the rotor R_ee
-    Eigen::Vector3f zyx_euler = RM::Quat2zyxEuler( quat.cast<double>() ).cast<float>();
+    Vector3f zyx_euler = RM::Quat2zyxEuler( quat.cast<double>() ).cast<float>();
     CGA R_z = cga_utils::rot(e1 * e2, zyx_euler(0));
     CGA R_y = cga_utils::rot(e3 * e1, zyx_euler(1));
     CGA R_x = cga_utils::rot(e2 * e3, zyx_euler(2));
@@ -230,31 +246,29 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
 
 
     // Quaternion orientation for each motor
-    Eigen::Quaternionf quat_m_0_i = computeMotorInitalQuat(m_0, rot_cen);
-    Eigen::Quaternionf quat_m_0 = computeMotorQuat(m_0, rot_cen, epl_0);
+    Quaternionf quat_m_0_i = computeMotorInitalQuat(m_0, rot_cen);
+    Quaternionf quat_m_0 = computeMotorQuat(m_0, rot_cen, epl_0);
 
-    Eigen::Quaternionf quat_m_1_i = computeMotorInitalQuat(m_1, rot_cen);
-    Eigen::Quaternionf quat_m_1 = computeMotorQuat(m_1, rot_cen, epl_1);
+    Quaternionf quat_m_1_i = computeMotorInitalQuat(m_1, rot_cen);
+    Quaternionf quat_m_1 = computeMotorQuat(m_1, rot_cen, epl_1);
     
-    Eigen::Quaternionf quat_m_2_i = computeMotorInitalQuat(m_2, rot_cen);
-    Eigen::Quaternionf quat_m_2 = computeMotorQuat(m_2, rot_cen, epl_2);
+    Quaternionf quat_m_2_i = computeMotorInitalQuat(m_2, rot_cen);
+    Quaternionf quat_m_2 = computeMotorQuat(m_2, rot_cen, epl_2);
 
 
     // Compute the IK solutions (motor angles)
 
-    // // Cross product to compute the angle between two planes
+    // // (Method 1) cross product to compute the angle between two planes
     // float th_0 = solveJointAngle(no, m_0, rot_cen, epl_0);
     // float th_1 = solveJointAngle(no, m_1, rot_cen, epl_1);
     // float th_2 = solveJointAngle(no, m_2, rot_cen, epl_2);
 
-    // Compute angle between two motor orientations
-    float th_0 = computeRelativeAngle(quat_m_0_i, quat_m_0);
-    float th_1 = computeRelativeAngle(quat_m_1_i, quat_m_1);
-    float th_2 = computeRelativeAngle(quat_m_2_i, quat_m_2);
+    // (Method 2) Compute angle between two motor orientations
+    float th_0 = computeRelativeZAngle(quat_m_0_i, quat_m_0);
+    float th_1 = computeRelativeZAngle(quat_m_1_i, quat_m_1);
+    float th_2 = computeRelativeZAngle(quat_m_2_i, quat_m_2);
 
     
-
-
     
 
     // Assemble results:

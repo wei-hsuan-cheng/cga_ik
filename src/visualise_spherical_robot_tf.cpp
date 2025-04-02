@@ -76,7 +76,7 @@ private:
     int k_;
     double t_;
 
-    Eigen::Quaternionf quat_cmd_;
+    Quaternionf quat_cmd_;
 
     float r_b_, ratio_e_b_, r_e_;
     CGA e_principal_, rot_cen_, s_0_, s_1_;
@@ -94,7 +94,7 @@ private:
     void initSRBIK()
     {
         // IK target pose (quaternion orientation)
-        quat_cmd_ = Eigen::Quaternionf::Identity();
+        quat_cmd_ = Quaternionf::Identity();
 
         // Spherical robot geometries
         // Base radius and end-plate radius
@@ -118,11 +118,11 @@ private:
         ik_result_ = cga_ik_spherical_robot::computeSphericalRobotIK(e_principal_, 
                                                                      rot_cen_, 
                                                                      s_0_, s_1_, 
-                                                                     Eigen::Quaternionf::Identity(), 
+                                                                     Quaternionf::Identity(), 
                                                                      r_b_, r_e_);
     }
 
-    void publishTF(const Eigen::Vector3f &p, const Eigen::Quaternionf &q, const std::string &child, const std::string &parent)
+    void publishTF(const Vector3f &p, const Quaternionf &q, const std::string &child, const std::string &parent)
     {
         geometry_msgs::msg::TransformStamped tf;
         tf.header.stamp = this->now();
@@ -146,9 +146,9 @@ private:
         int marker_id,
         const std::string &ns,
         const std::string &frame_id,
-        const Eigen::Vector3f &p0,
-        const Eigen::Vector3f &p1,
-        const Eigen::Vector3f &p2,
+        const Vector3f &p0,
+        const Vector3f &p1,
+        const Vector3f &p2,
         float r_color,  // Red   [0..1]
         float g_color,  // Green [0..1]
         float b_color,  // Blue  [0..1]
@@ -179,7 +179,7 @@ private:
         tri_marker.pose.orientation.w = 1.0f;
 
         // Convert the three Eigen points to geometry_msgs::Point
-        auto eigenToPoint = [&](const Eigen::Vector3f &v) {
+        auto eigenToPoint = [&](const Vector3f &v) {
             geometry_msgs::msg::Point pt;
             pt.x = v.x();
             pt.y = v.y();
@@ -265,7 +265,7 @@ private:
 
 
         // Rotation centre
-        publishTF(ik_result_.rot_cen, Eigen::Quaternionf::Identity(), "srb_rot_cen", "srb_base");
+        publishTF(ik_result_.rot_cen, Quaternionf::Identity(), "srb_rot_cen", "srb_base");
 
 
         // End-plate corners and centre 
@@ -276,14 +276,14 @@ private:
 
 
         // Elbows
-        publishTF(ik_result_.elb_0, Eigen::Quaternionf::Identity(), "srb_elbow_0", "srb_base");
-        publishTF(ik_result_.elb_1, Eigen::Quaternionf::Identity(), "srb_elbow_1", "srb_base");
-        publishTF(ik_result_.elb_2, Eigen::Quaternionf::Identity(), "srb_elbow_2", "srb_base");
+        publishTF(ik_result_.elb_0, Quaternionf::Identity(), "srb_elbow_0", "srb_base");
+        publishTF(ik_result_.elb_1, Quaternionf::Identity(), "srb_elbow_1", "srb_base");
+        publishTF(ik_result_.elb_2, Quaternionf::Identity(), "srb_elbow_2", "srb_base");
 
 
         // End-effector
-        Eigen::Vector3f pos_yc_ee = (ik_result_.r_s - ik_result_.d) * cga_utils::G2R(e_principal_);
-        publishTF(pos_yc_ee, Eigen::Quaternionf::Identity(), "srb_ee", "srb_epl_c");
+        Vector3f pos_yc_ee = (ik_result_.r_s - ik_result_.d) * cga_utils::G2R(e_principal_);
+        publishTF(pos_yc_ee, Quaternionf::Identity(), "srb_ee", "srb_epl_c");
 
     }
 
@@ -386,8 +386,8 @@ private:
     void debuggingInfo()
     {
         // // Compute the are of the end-plate triangle
-        // Eigen::Vector3f v1 = ik_result_.epl_1 - ik_result_.epl_0;
-        // Eigen::Vector3f v2 = ik_result_.epl_2 - ik_result_.epl_0;
+        // Vector3f v1 = ik_result_.epl_1 - ik_result_.epl_0;
+        // Vector3f v2 = ik_result_.epl_2 - ik_result_.epl_0;
         // float A_tri_ep = (0.5 * v1.cross(v2)).norm();
         // // std::cout << "A_tri_ep = " << A_tri_ep << std::endl;
 
