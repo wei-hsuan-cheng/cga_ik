@@ -1,4 +1,5 @@
-// This algorithm is based on: https://slides.com/hugohadfield/game2020
+// This IK solution is originally adopted from: https://slides.com/hugohadfield/game2020
+// A JavaScript implementation of this code: https://enkimute.github.io/ganja.js/examples/coffeeshop.html#2DmBscfSXO
 
 #ifndef CGA_IK_SPHERICAL_ROBOT_HPP
 #define CGA_IK_SPHERICAL_ROBOT_HPP
