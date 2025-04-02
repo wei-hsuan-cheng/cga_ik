@@ -33,7 +33,7 @@ public:
     // Timer
     timer_ = this->create_wall_timer(
       std::chrono::milliseconds(static_cast<int>(Ts_ * 1000)),
-      std::bind(&VisualiseSphericalRobotTF::timerCallback, this)
+      std::bind(&VisualiseSphericalRobotTF::visualise_spherical_robot_tf_callback_, this)
     );
 
     // Publishers
@@ -76,6 +76,8 @@ private:
     int k_;
     double t_;
 
+    Eigen::Quaternionf quat_cmd_;
+
     float r_b_, ratio_e_b_, r_e_;
     CGA e_principal_, rot_cen_, s_0_, s_1_;
     cga_ik_spherical_robot::SphericalRobotIKResult ik_result_;
@@ -91,6 +93,9 @@ private:
 
     void initSRBIK()
     {
+        // IK target pose (quaternion orientation)
+        quat_cmd_ = Eigen::Quaternionf::Identity();
+
         // Spherical robot geometries
         // Base radius and end-plate radius
         r_b_ = 0.5f;
@@ -191,32 +196,35 @@ private:
     }
 
   
-    void timerCallback()
+    void getTargetPose()
     {
-        // 1) Update time
+        // Update time
         k_ += 1;
         t_ = k_ * Ts_;
 
-        // 2) Target orientation for the IK problem
+        // Target orientation for the IK problem
         float freq = 0.1;  // [cycles/callback]
         float th = (0.25 * M_PI) * std::sin(2.0 * M_PI * freq * t_);
         // float th = 0.0;
 
-        // Vector4d axis_ang(0.0, 0.0, 1.0, (double) th);
+        Vector4d axis_ang(0.0, 0.0, 1.0, (double) th);
         // Vector4d axis_ang(0.0, 1.0, 0.0, (double) th);
-        Vector4d axis_ang(1.0, 0.0, 0.0, (double) th);
+        // Vector4d axis_ang(1.0, 0.0, 0.0, (double) th);
 
         Vector3d so3 = (axis_ang.head(3)).normalized() * axis_ang(3);
-        Eigen::Quaternionf quat = RM::so32Quat(so3).cast<float>();
+        quat_cmd_ = RM::so32Quat(so3).cast<float>();
+    }
 
-        // 3) Call our CGA-based IK solver for the spherical robot
+    void solveIK() 
+    {
+        // Call our CGA-based IK solver for the spherical robot
         ik_result_ = cga_ik_spherical_robot::computeSphericalRobotIK(e_principal_, 
                                                                      rot_cen_, 
                                                                      s_0_, s_1_, 
-                                                                     quat, 
+                                                                     quat_cmd_, 
                                                                      r_b_, r_e_);
 
-        // 4) Publish the joint states for these angles
+        // Publish the joint states for these angles
         sensor_msgs::msg::JointState js_msg;
         js_msg.header.stamp = this->now();
         js_msg.name = {"joint_0", "joint_1", "joint_2"};
@@ -227,59 +235,54 @@ private:
         std_msgs::msg::Float64MultiArray angles_msg;
         angles_msg.data = {ik_result_.th_0 * RM::r2d, ik_result_.th_1 * RM::r2d, ik_result_.th_2 * RM::r2d};
         angles_pub_->publish(angles_msg);
+    }
 
-        // 5) Publish TF frames:
+    void publishAllTransforms()
+    {
         {
             geometry_msgs::msg::TransformStamped base_tf;
             base_tf.header.stamp = this->now();
             base_tf.header.frame_id = "world";
             base_tf.child_frame_id = "srb_base";
 
+            base_tf.transform.rotation.w = 1.0; // identity rotation
             base_tf.transform.translation.x = 0.0;
             base_tf.transform.translation.y = 0.0;
             base_tf.transform.translation.z = 0.0;
-            base_tf.transform.rotation.w = 1.0; // identity rotation
-
+            
             tf_broadcaster_->sendTransform(base_tf);
         }
 
-        // Extract each motor in 3D:
-        publishTF(ik_result_.m_0, Eigen::Quaternionf::Identity(), "srb_motor_0", "srb_base");
+        // Motors of the robot
+        publishTF(ik_result_.m_0, ik_result_.quat_m_0, "srb_motor_0", "srb_base");
+        publishTF(ik_result_.m_0, ik_result_.quat_m_0_i, "srb_motor_0_i", "srb_base");
+
         publishTF(ik_result_.m_1, Eigen::Quaternionf::Identity(), "srb_motor_1", "srb_base");
         publishTF(ik_result_.m_2, Eigen::Quaternionf::Identity(), "srb_motor_2", "srb_base");
 
-        // Rotation centre of the robot
+        // Rotation centre
         publishTF(ik_result_.rot_cen, Eigen::Quaternionf::Identity(), "srb_rot_cen", "srb_base");
 
-        // For publishing epl_0, epl_1, and epl_2 (end-plate corners)
-        publishTF(ik_result_.epl_0, quat, "srb_epl_0", "srb_base");
-        publishTF(ik_result_.epl_1, quat, "srb_epl_1", "srb_base");
-        publishTF(ik_result_.epl_2, quat, "srb_epl_2", "srb_base");
-        publishTF(ik_result_.epl_c, quat, "srb_epl_c", "srb_base");
+        // End-plate corners and centre 
+        publishTF(ik_result_.epl_0, ik_result_.quat_epl_0, "srb_epl_0", "srb_base");
+        publishTF(ik_result_.epl_1, ik_result_.quat_epl_1, "srb_epl_1", "srb_base");
+        publishTF(ik_result_.epl_2, ik_result_.quat_epl_2, "srb_epl_2", "srb_base");
+        publishTF(ik_result_.epl_c, ik_result_.quat_epl_c, "srb_epl_c", "srb_base");
 
-        // Elbow frames: use (ik_result_.elb_0, elb_1, elb_2)
+        // Elbows
         publishTF(ik_result_.elb_0, Eigen::Quaternionf::Identity(), "srb_elbow_0", "srb_base");
         publishTF(ik_result_.elb_1, Eigen::Quaternionf::Identity(), "srb_elbow_1", "srb_base");
         publishTF(ik_result_.elb_2, Eigen::Quaternionf::Identity(), "srb_elbow_2", "srb_base");
 
-        // End-effector: let's treat the “endpoint” from the IK result as a single final frame
+        // End-effector
         Eigen::Vector3f pos_yc_ee = (ik_result_.r_s - ik_result_.d) * cga_utils::G2R(e_principal_);
         publishTF(pos_yc_ee, Eigen::Quaternionf::Identity(), "srb_ee", "srb_epl_c");
 
-        // // Debugging
-        // // Compute the are of the end-plate triangle
-        // Eigen::Vector3f v1 = ik_result_.epl_1 - ik_result_.epl_0;
-        // Eigen::Vector3f v2 = ik_result_.epl_2 - ik_result_.epl_0;
-        // float A_tri_ep = (0.5 * v1.cross(v2)).norm();
-        // // std::cout << "A_tri_ep = " << A_tri_ep << std::endl;
+    }
 
-        // // Compare the lengths
-        // std::cout << "r_s = d_rc_yi = " << ik_result_.r_s << std::endl;
-        // std::cout << "d = d_rc_yc = " << ik_result_.d << std::endl;
-
-
-        // Publish markers
-        // End-plate (end-effector)
+    void publisherMarkers()
+    {
+        // End-plate
         publishTriMarker(
                          srb_ee_marker_pub_,
                          0,                // marker_id
@@ -303,7 +306,7 @@ private:
                          1.0f, 0.0f, 0.0f, 1.0f // RGBA
                         );
         
-        // Lower triangles for centre-elb-motor
+        // Lower triangles for rot_cen-elb-m
         publishTriMarker(
                          srb_ltri_0_pub_,
                          0,                // marker_id
@@ -337,7 +340,7 @@ private:
                          0.0f, 1.0f, 0.0f, 1.0f // RGBA
                         );
 
-        // Upper triangles for centre-elb-plate
+        // Upper triangles for rot_cen-elb-epl
         publishTriMarker(
                          srb_utri_0_pub_,
                          0,                // marker_id
@@ -371,8 +374,59 @@ private:
                          0.0f, 0.0f, 1.0f, 1.0f // RGBA
                         );
 
+    }
+
+    void debuggingInfo()
+    {
+        // // Compute the are of the end-plate triangle
+        // Eigen::Vector3f v1 = ik_result_.epl_1 - ik_result_.epl_0;
+        // Eigen::Vector3f v2 = ik_result_.epl_2 - ik_result_.epl_0;
+        // float A_tri_ep = (0.5 * v1.cross(v2)).norm();
+        // // std::cout << "A_tri_ep = " << A_tri_ep << std::endl;
+
+        // // Compare the lengths
+        // std::cout << "r_s = d_rc_yi = " << ik_result_.r_s << std::endl;
+        // std::cout << "d = d_rc_yc = " << ik_result_.d << std::endl;
+
+        // // Compare IK solutions
+        // Quaterniond quat_m_0_d = ik_result_.quat_m_0.cast<double>();
+        // Quaterniond quat_m_0_i_d = ik_result_.quat_m_0_i.cast<double>();
+        // Quaterniond quat_m_0_i_ik_d = ik_result_.quat_m_0_i_ik.cast<double>();
+
+        // // quat_m_0 v.s. quat_m_0_i
+        // Quaterniond quat_m_i_m_0_d = RM::InvQuat(quat_m_0_i_d) * quat_m_0_d;
+        // Vector4d axis_ang_m_i_m_0 = RM::AxisAng3( RM::Quat2so3(quat_m_i_m_0_d) );
+        // std::cout << "axis_0 = " << axis_ang_m_i_m_0.head(3).transpose() << std::endl;
+        // std::cout << "theta_0 = " << axis_ang_m_i_m_0(3) * RM::r2d << std::endl;
+        // std::cout << "--------------------------------" << std::endl;
+
+        // // quat_m_0 v.s. quat_m_0_i_ik
+        // Quaterniond quat_m_i_m_0_ik_d = RM::InvQuat(quat_m_0_i_ik_d) * quat_m_0_d;
+        // Vector4d axis_ang_m_i_m_0_ik = RM::AxisAng3( RM::Quat2so3(quat_m_i_m_0_ik_d) );
+        // std::cout << "axis_0_ik = " << axis_ang_m_i_m_0_ik.head(3).transpose() << std::endl;
+        // std::cout << "theta_0_ik = " << axis_ang_m_i_m_0_ik(3) * RM::r2d << std::endl;
+        // std::cout << "--------------------------------" << std::endl;
 
 
+    }
+
+    void visualise_spherical_robot_tf_callback_()
+    {
+        
+        // Get IK target pose (orientation)
+        getTargetPose();
+
+        // Solve IK (joint angles) for the spherical robot
+        solveIK();
+
+        // Publish all TF frames:
+        publishAllTransforms();
+
+        // Publish markers
+        publisherMarkers();
+
+        // Debugging
+        debuggingInfo();
     }
 
 
