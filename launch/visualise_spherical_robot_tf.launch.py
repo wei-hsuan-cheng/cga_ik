@@ -19,9 +19,9 @@ def load_yaml_file_absolute_path(yaml_file):
 
 def generate_launch_description():
     home_dir = os.path.expanduser("~")
-    sup_tms_params = os.path.join(home_dir, "sup_tms/tmr_ws/config/sup_tms_params.yaml")
+    spherical_robot_params = os.path.join(home_dir, "ros2_ws/test_ws/src/cga_ik/config/spherical_robot_params.yaml")
     
-    pose_f_tcp_params = load_yaml_file_absolute_path(sup_tms_params).get("pose_f_tcp_params", {})
+    geometric_params = load_yaml_file_absolute_path(spherical_robot_params).get("geometric_params", {})
     
     urdf_path = os.path.join(get_package_share_directory("cga_ik"), "config", "tm5-700.urdf.xacro")
 
@@ -54,7 +54,8 @@ def generate_launch_description():
         executable="visualise_spherical_robot_tf",
         name="visualise_spherical_robot_tf",
         output="screen",
-        parameters=[],
+        parameters=[geometric_params,
+                    ],
     )
     
     

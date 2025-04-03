@@ -102,13 +102,25 @@ private:
         quat_cmd_ = Quaternionf::Identity();
 
         // Spherical robot geometries
-        // Base radius, rotation centre height, and end-plate radius
-        r_b_ = 0.5f;
-        // ratio_c_b_ = 1.0f / 3.0f;
-        // ratio_e_b_ = 0.6f;
+        // Load geometric params from yaml file
+        // Declare default parameters (in case the YAML file doesn't provide them)
+        this->declare_parameter<float>("r_b", 0.5);
+        this->declare_parameter<float>("ratio_c_b", 1.0);
+        this->declare_parameter<float>("ratio_e_b", 1.0);
 
-        ratio_c_b_ = 1.0f;
-        ratio_e_b_ = 1.0f;
+        // Retrieve the parameters
+        // Base radius, rotation centre height, and end-plate radius
+        this->get_parameter("r_b", r_b_);
+        this->get_parameter("ratio_c_b", ratio_c_b_);
+        this->get_parameter("ratio_e_b", ratio_e_b_);
+
+        
+        // r_b_ = 0.5f;
+        // // ratio_c_b_ = 1.0f / 3.0f;
+        // // ratio_e_b_ = 0.6f;
+
+        // ratio_c_b_ = 1.0f;
+        // ratio_e_b_ = 1.0f;
 
 
         r_c_ = ratio_c_b_ * r_b_;
