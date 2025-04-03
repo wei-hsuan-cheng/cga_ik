@@ -261,9 +261,6 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
     CGA pos_rot_cen_elb_2 = down(elb_2) - rot_cen;
 
 
-    
-    
-
     // Assemble results:
     SphericalRobotIKResult result;
     result.r_b = r_b;

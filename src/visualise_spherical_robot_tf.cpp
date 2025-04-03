@@ -83,7 +83,7 @@ private:
 
     Quaternionf quat_cmd_;
 
-    float r_b_, ratio_e_b_, r_e_;
+    float r_b_, ratio_c_b_, r_c_, ratio_e_b_, r_e_;
     CGA e_principal_, rot_cen_, s_0_, s_1_;
     cga_ik_spherical_robot::SphericalRobotIKResult ik_result_;
     
@@ -102,17 +102,24 @@ private:
         quat_cmd_ = Quaternionf::Identity();
 
         // Spherical robot geometries
-        // Base radius and end-plate radius
+        // Base radius, rotation centre height, and end-plate radius
         r_b_ = 0.5f;
-        ratio_e_b_ = 0.6f;
-        r_e_ = r_b_ * ratio_e_b_;
+        // ratio_c_b_ = 1.0f / 3.0f;
+        // ratio_e_b_ = 0.6f;
+
+        ratio_c_b_ = 1.0f;
+        ratio_e_b_ = 1.0f;
+
+
+        r_c_ = ratio_c_b_ * r_b_;
+        r_e_ = ratio_e_b_ * r_b_;
 
         // Spherical robot coordinate system
         // Principal axis of the 3-DoF spherical robot
         e_principal_ = e3;
 
         // Rotation centre
-        rot_cen_ = (1.0f / 3.0f) * r_b_ * e_principal_;
+        rot_cen_ = r_c_ * e_principal_;
 
         // Each motor position is set in the base plane, separated by 120 [deg].
         s_0_ = e1;
@@ -334,6 +341,7 @@ private:
             srb_outer_sphere_pub_->publish(sphere_marker);
         }
 
+        // Publish triangle markers
         // Base
         publishTriMarker(
                          srb_base_pub_,
