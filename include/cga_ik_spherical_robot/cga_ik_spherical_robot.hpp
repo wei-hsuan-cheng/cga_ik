@@ -29,48 +29,6 @@ using RM = RMUtils;
 
 namespace cga_ik_spherical_robot {
 
-// Helper: compute the Euclidean angle between two 3D vectors.
-inline float angleBetweenVecs(const Vector3f &v1, const Vector3f &v2)
-{
-    float dotVal = v1.dot(v2);
-    float norms  = v1.norm() * v2.norm();
-    if (norms < 1e-9f) {
-        return 0.0f; // handle degenerate case
-    }
-    return (float) RM::ArcCos( (double) dotVal / norms ); // returns angle in [0, π]
-}
-
-// Helper: solve the IK joint angle for each motor of the spherical robot.
-float solveJointAngle(const CGA &o, const CGA &m, const CGA &rc, const CGA &epl)
-{
-    Vector3f normal_rc_m_o = 
-    ( cga_utils::G2R( down(o) ) - cga_utils::G2R(m) ).cross( cga_utils::G2R(rc) - cga_utils::G2R(m) );
-    normal_rc_m_o = normal_rc_m_o.normalized();
-
-    Vector3f normal_epl_m_rc = 
-    ( cga_utils::G2R(rc) - cga_utils::G2R(m) ).cross( cga_utils::G2R( down(epl) ) - cga_utils::G2R(m) );
-    normal_epl_m_rc = normal_epl_m_rc.normalized();
-    
-    // Compute axis-angle representation
-    Vector3f axis_cross = normal_rc_m_o.cross(normal_epl_m_rc);
-    float ang_cross = angleBetweenVecs(normal_rc_m_o, normal_epl_m_rc);
-    // Check if axis_cross (axis of rotation) is in the same direction as vec_m_rc (from motor to centre)
-    Vector3f vec_m_rc = (cga_utils::G2R(rc) - cga_utils::G2R(m)).normalized();
-    float ang = axis_cross(0) / vec_m_rc(0) >= 0 ? ang_cross : -ang_cross;
-    
-
-    // // Debugging
-    // std::cout << "normal_rc_m_o: " << normal_rc_m_o.transpose() << std::endl;
-    // std::cout << "normal_epl_m_rc: " << normal_epl_m_rc.transpose() << std::endl;
-    // std::cout << "axis_cross: " << axis_cross.transpose() << std::endl;
-    // Vector3f axis_div = axis_cross.cwiseQuotient(vec_m_rc); // entry-wise division for axis_cross and vec_m_rc
-    // std::cout << "axis_div: " << axis_div.transpose() << std::endl;
-    // std::cout << "ang_cross [deg] = " << ang_cross * RM::r2d << std::endl;
-    // std::cout << "ang [deg] = " << ang * RM::r2d << std::endl;
-
-    return ang;
-}
-
 // Helper: compute the quaternion orientation of the motor.
 Quaternionf computeMotorQuat(const CGA &m, const CGA &rc, const CGA &epl)
 {
@@ -116,17 +74,30 @@ float computeRelativeZAngle(const Quaternionf & quat_0_1, const Quaternionf & qu
 struct SphericalRobotIKResult {
     float r_b, r_e;
     float r_s, d;
+    
     Vector3f rot_cen;      // rotation centre of the robot
+    Quaternionf quat_rot_cen; // quaternion for rotation centre
 
-    Vector3f m_0, m_1, m_2;           // motor (pivot) positions
+    Vector3f m_0, m_1, m_2;           // motor positions
     Quaternionf quat_m_0, quat_m_1, quat_m_2; // quaternions for motor orientations
     Quaternionf quat_m_0_i, quat_m_1_i, quat_m_2_i; // initial quaternions for motor orientations
 
-    Vector3f epl_0, epl_1, epl_2, epl_c;           // end-plate corners and centre
-    Quaternionf quat_epl_0, quat_epl_1, quat_epl_2, quat_epl_c; // quaternions for end-plate corners and centre
+    Vector3f epl_0, epl_1, epl_2, epl_c, ept;           // end-plate corners and centre, and the end-point on the outer sphere
+    Quaternionf quat_epl_0, quat_epl_1, quat_epl_2, quat_epl_c, quat_ept; // quaternions for end-plate corners and centre, and the end-point on the outer sphere
     
     Vector3f elb_0, elb_1, elb_2;     // elbow positions
     Quaternionf quat_elb_0, quat_elb_1, quat_elb_2; // quaternions for elbow orientations
+
+    // Relative poses w.r.t the rotation centre
+    Vector3f pos_rot_cen_m_0, pos_rot_cen_m_1, pos_rot_cen_m_2;           // motor positions
+    Quaternionf quat_rot_cen_m_0, quat_rot_cen_m_1, quat_rot_cen_m_2; // quaternions for motor orientations
+    Quaternionf quat_rot_cen_m_0_i, quat_rot_cen_m_1_i, quat_rot_cen_m_2_i; // initial quaternions for motor orientations
+
+    Vector3f pos_rot_cen_epl_0, pos_rot_cen_epl_1, pos_rot_cen_epl_2, pos_rot_cen_epl_c, pos_rot_cen_ept; // end-plate corners and centre, and the end-point on the outer sphere
+    Quaternionf quat_rot_cen_epl_0, quat_rot_cen_epl_1, quat_rot_cen_epl_2, quat_rot_cen_epl_c, quat_rot_cen_ept; // quaternions for end-plate corners and centre, and the end-point on the outer sphere
+    
+    Vector3f pos_rot_cen_elb_0, pos_rot_cen_elb_1, pos_rot_cen_elb_2; // elbow positions
+    Quaternionf quat_rot_cen_elb_0, quat_rot_cen_elb_1, quat_rot_cen_elb_2; // quaternions for elbow orientations
     
     float th_0, th_1, th_2;  // motor angles [rad]
 };
@@ -152,7 +123,6 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
     CGA m_0 = r_b * s_0;
     CGA m_1 = r_b * s_1;
     CGA m_2 = r_b * s_2;
-
 
     // Outer sphere radius
     CGA temp = m_0 - rot_cen;
@@ -204,6 +174,9 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
     CGA pos_epl_0_epl_c =  R_ee * (-r_e * s_0) * ~R_ee;
     CGA Tr_epl_0_epl_c = cga_utils::trans( pos_epl_0_epl_c );
     CGA epl_c = Tr_epl_0_epl_c * epl_0 * ~Tr_epl_0_epl_c;
+
+    // End-point on the outer sphere
+    CGA ept = up( rot_cen + r_s * (down(epl_c) - rot_cen).normalized() );
 
 
     // Build translator for each corner
@@ -258,16 +231,35 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
 
 
     // Compute the IK solutions (motor angles)
-
-    // // (Method 1) cross product to compute the angle between two planes
-    // float th_0 = solveJointAngle(no, m_0, rot_cen, epl_0);
-    // float th_1 = solveJointAngle(no, m_1, rot_cen, epl_1);
-    // float th_2 = solveJointAngle(no, m_2, rot_cen, epl_2);
-
-    // (Method 2) Compute angle between two motor orientations
+    // Compute angle between two motor orientations
     float th_0 = computeRelativeZAngle(quat_m_0_i, quat_m_0);
     float th_1 = computeRelativeZAngle(quat_m_1_i, quat_m_1);
     float th_2 = computeRelativeZAngle(quat_m_2_i, quat_m_2);
+
+
+    // Relative poses
+    CGA pos_rot_cen_m_0 = m_0 - rot_cen;
+    CGA pos_rot_cen_m_1 = m_1 - rot_cen;
+    CGA pos_rot_cen_m_2 = m_2 - rot_cen;
+    Quaternionf quat_rot_cen_m_0 = quat_m_0;
+    Quaternionf quat_rot_cen_m_1 = quat_m_1;
+    Quaternionf quat_rot_cen_m_2 = quat_m_2;
+
+    CGA pos_rot_cen_epl_0 = down(epl_0) - rot_cen;
+    CGA pos_rot_cen_epl_1 = down(epl_1) - rot_cen;
+    CGA pos_rot_cen_epl_2 = down(epl_2) - rot_cen;
+    CGA pos_rot_cen_epl_c = down(epl_c) - rot_cen;
+    CGA pos_rot_cen_ept = down(ept) - rot_cen;
+    Quaternionf quat_rot_cen_epl_0 = quat;
+    Quaternionf quat_rot_cen_epl_1 = quat;
+    Quaternionf quat_rot_cen_epl_2 = quat;
+    Quaternionf quat_rot_cen_epl_c = quat;
+    Quaternionf quat_rot_cen_ept = quat;
+
+    CGA pos_rot_cen_elb_0 = down(elb_0) - rot_cen;
+    CGA pos_rot_cen_elb_1 = down(elb_1) - rot_cen;
+    CGA pos_rot_cen_elb_2 = down(elb_2) - rot_cen;
+
 
     
     
@@ -278,7 +270,10 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
     result.r_e = r_e;
     result.r_s = r_s;
     result.d = d;
+
+    // Relative poses w.r.t the base centre frame
     result.rot_cen = cga_utils::G2R(rot_cen);
+    result.quat_rot_cen = Quaternionf::Identity();
 
     result.m_0 = cga_utils::G2R(m_0);
     result.m_1 = cga_utils::G2R(m_1);
@@ -294,15 +289,41 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
     result.epl_1 = cga_utils::G2R( down(epl_1) );
     result.epl_2 = cga_utils::G2R( down(epl_2) );
     result.epl_c = cga_utils::G2R( down(epl_c) );
+    result.ept = cga_utils::G2R( down(ept) );
     result.quat_epl_0 = quat;
     result.quat_epl_1 = quat;
     result.quat_epl_2 = quat;
     result.quat_epl_c = quat;
+    result.quat_ept = quat;
 
     result.elb_0 = cga_utils::G2R( down(elb_0) );
     result.elb_1 = cga_utils::G2R( down(elb_1) );
     result.elb_2 = cga_utils::G2R( down(elb_2) );
 
+    // Relative poses w.r.t the rotation centre frame
+    result.pos_rot_cen_m_0 = cga_utils::G2R(pos_rot_cen_m_0);
+    result.pos_rot_cen_m_1 = cga_utils::G2R(pos_rot_cen_m_1);
+    result.pos_rot_cen_m_2 = cga_utils::G2R(pos_rot_cen_m_2);
+    result.quat_rot_cen_m_0 = quat_rot_cen_m_0;
+    result.quat_rot_cen_m_1 = quat_rot_cen_m_1;
+    result.quat_rot_cen_m_2 = quat_rot_cen_m_2;
+
+    result.pos_rot_cen_epl_0 = cga_utils::G2R(pos_rot_cen_epl_0);
+    result.pos_rot_cen_epl_1 = cga_utils::G2R(pos_rot_cen_epl_1);
+    result.pos_rot_cen_epl_2 = cga_utils::G2R(pos_rot_cen_epl_2);
+    result.pos_rot_cen_epl_c = cga_utils::G2R(pos_rot_cen_epl_c);
+    result.pos_rot_cen_ept = cga_utils::G2R(pos_rot_cen_ept);
+    result.quat_rot_cen_epl_0 = quat_rot_cen_epl_0;
+    result.quat_rot_cen_epl_1 = quat_rot_cen_epl_1;
+    result.quat_rot_cen_epl_2 = quat_rot_cen_epl_2;
+    result.quat_rot_cen_epl_c = quat_rot_cen_epl_c;
+    result.quat_rot_cen_ept = quat_rot_cen_ept;
+
+    result.pos_rot_cen_elb_0 = cga_utils::G2R( pos_rot_cen_elb_0 );
+    result.pos_rot_cen_elb_1 = cga_utils::G2R( pos_rot_cen_elb_1 );
+    result.pos_rot_cen_elb_2 = cga_utils::G2R( pos_rot_cen_elb_2 );
+
+    // IK solution
     result.th_0 = th_0;
     result.th_1 = th_1;
     result.th_2 = th_2;
