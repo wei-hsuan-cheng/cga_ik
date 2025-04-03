@@ -134,6 +134,8 @@ struct SphericalRobotIKResult {
 
 // Main function: compute IK solution of the 3-DoF spherical robot.
 inline SphericalRobotIKResult computeSphericalRobotIK(
+    // geometry parameters
+    float r_b, float r_e,
     // Principal axis of the 3-DoF spherical robot
     CGA e_principal,
     // Rotation centre
@@ -141,9 +143,7 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
     // Two basis vectors on the base plane
     CGA s_0, CGA s_1,
     // Quaternion orientation
-    Quaternionf quat,
-    // geometry parameters
-    float r_b, float r_e) 
+    Quaternionf quat) 
 {
     // Compute s_2 based on s_0 and s_1
     CGA s_2 = (-1.0f) * s_0 + (-1.0f) * s_1;

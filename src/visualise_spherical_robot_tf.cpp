@@ -115,11 +115,11 @@ private:
         s_1_ = rot_e12_120 * s_0_ * ~rot_e12_120;
 
         // IK solver for the spherical robot
-        ik_result_ = cga_ik_spherical_robot::computeSphericalRobotIK(e_principal_, 
+        ik_result_ = cga_ik_spherical_robot::computeSphericalRobotIK(r_b_, r_e_,
+                                                                     e_principal_, 
                                                                      rot_cen_, 
                                                                      s_0_, s_1_, 
-                                                                     Quaternionf::Identity(), 
-                                                                     r_b_, r_e_);
+                                                                     Quaternionf::Identity());
     }
 
     void publishTF(const Vector3f &p, const Quaternionf &q, const std::string &child, const std::string &parent)
@@ -218,11 +218,11 @@ private:
     void solveIK() 
     {
         // Call our CGA-based IK solver for the spherical robot
-        ik_result_ = cga_ik_spherical_robot::computeSphericalRobotIK(e_principal_, 
+        ik_result_ = cga_ik_spherical_robot::computeSphericalRobotIK(r_b_, r_e_,
+                                                                     e_principal_, 
                                                                      rot_cen_, 
                                                                      s_0_, s_1_, 
-                                                                     quat_cmd_, 
-                                                                     r_b_, r_e_);
+                                                                     quat_cmd_);
 
         // Publish the joint states for these angles
         sensor_msgs::msg::JointState js_msg;
@@ -392,7 +392,7 @@ private:
         // // std::cout << "A_tri_ep = " << A_tri_ep << std::endl;
 
         // // Compare the lengths
-        // std::cout << "r_s = d_rc_yi = " << ik_result_.r_s << std::endl;
+        // std::cout << "(Outer sphere radius) r_s = d_rc_elp_i = d_rc_elb_i = " << ik_result_.r_s << std::endl;
         // std::cout << "d = d_rc_yc = " << ik_result_.d << std::endl;
 
 
