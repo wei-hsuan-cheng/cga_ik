@@ -11,6 +11,7 @@ from launch_ros.substitutions import FindPackageShare
 from launch_ros.descriptions import ComposableNode, ParameterValue
 from launch.event_handlers import OnProcessExit, OnProcessStart
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch_ros.parameter_descriptions import ParameterValue
 
 def load_yaml_file_absolute_path(yaml_file):
     """Load a YAML file and return the parameters dictionary."""
@@ -18,36 +19,30 @@ def load_yaml_file_absolute_path(yaml_file):
         return yaml.safe_load(file)
 
 def generate_launch_description():
-    home_dir = os.path.expanduser("~")
-    spherical_robot_params = os.path.join(home_dir, "ros2_ws/test_ws/src/cga_ik/config/spherical_robot_params.yaml")
     
+    spherical_robot_params = os.path.join(get_package_share_directory("cga_ik"), "config", "spherical_robot_params.yaml")    
     geometric_params = load_yaml_file_absolute_path(spherical_robot_params).get("geometric_params", {})
     
-    urdf_path = os.path.join(get_package_share_directory("cga_ik"), "config", "tm5-700.urdf.xacro")
+    urdf_xacro_path = os.path.join(get_package_share_directory("cga_ik"), "config", "spherical_robot.urdf.xacro")
+    if not os.path.exists(urdf_xacro_path):
+        raise FileNotFoundError(f"URDF file not found at {urdf_xacro_path}")
+    robot_description_content = xacro.process_file(urdf_xacro_path).toxml()
 
-    if not os.path.exists(urdf_path):
-        raise FileNotFoundError(f"URDF file not found at {urdf_path}")
     
-    robot_description_content = Command(
-        [
-            PathJoinSubstitution([FindExecutable(name="xacro")]),
-            " ",
-            urdf_path,
-            " ",
-        ]
-    )
 
     robot_description = {"robot_description": robot_description_content}
     
-    # robot_state_publisher_node = Node(
-    #     package="robot_state_publisher",
-    #     executable="robot_state_publisher",
-    #     name="robot_state_publisher",
-    #     output="both",
-    #     parameters=[
-    #         robot_description, 
-    #     ],
-    # )
+    # urdf.xacro is not yet ready
+    robot_state_publisher_node = Node(
+        package="robot_state_publisher",
+        executable="robot_state_publisher",
+        name="robot_state_publisher",
+        output="both",
+        parameters=[
+            robot_description, 
+        ],
+    )
+    
     
     visualise_spherical_robot_tf_node = Node(
         package="cga_ik",

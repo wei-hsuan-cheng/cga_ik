@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="spherical_robot">
+
+    <!-- base radius (not used for geometry in this snippet, but typically you would) -->
+    <xacro:property name="r_b" value="0.5" />
+
+
+    <!-- ============= World link ============= -->
+    <link name="world"></link>
+
+    <!-- ============= Joint: world to base_link ============= -->
+    <joint name="base_joint" type="fixed">
+        <parent link="world"/>
+        <child link="base_link"/>        
+        <origin xyz="4.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+    </joint>
+    
+
+
+    <!-- ============= Base link ============= -->
+    <link name="base_link">
+    <visual>
+        <geometry>
+        <box>
+            <size>0.2 0.2 0.02</size>
+        </box>
+        </geometry>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <material>
+        <color rgba="0.8 0.8 0.8 1.0"/>
+        </material>
+    </visual>
+
+    <collision>
+        <geometry>
+        <box>
+            <size>0.2 0.2 0.02</size>
+        </box>
+        </geometry>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </collision>
+
+    <inertial>
+        <origin xyz="0 0 0"/>
+        <mass value="1.0"/>
+        <inertia ixx="0.1" ixy="0.0" ixz="0.0"
+                iyy="0.1" iyz="0.0" izz="0.1"/>
+    </inertial>
+    </link>
+
+    <!-- ============= Joint: base_link to motor_0_link ============= -->
+    <joint name="base_to_motor_0" type="revolute">
+        <parent link="base_link"/>
+        <child link="motor_0_link"/>
+        <origin xyz="0 0 0.01" rpy="0 0 0"/>
+        <axis xyz="0 0 1"/>
+        <limit lower="-3.14" upper="3.14" effort="10" velocity="10"/>
+    </joint>
+
+
+
+    <!-- ============= motor_0 link ============= -->
+    <link name="motor_0_link">
+    <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+        <!-- A small cylinder as a placeholder representation -->
+        <cylinder length="0.1" radius="0.02"/>
+        </geometry>
+        <material>
+        <color rgba="0.0 0.8 0.0 1.0"/>
+        </material>
+    </visual>
+
+    <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+        <cylinder length="0.1" radius="0.02"/>
+        </geometry>
+    </collision>
+
+    <inertial>
+        <origin xyz="0 0 0"/>
+        <mass value="0.1"/>
+        <inertia ixx="0.01" ixy="0.0" ixz="0.0"
+                iyy="0.01" iyz="0.0" izz="0.01"/>
+    </inertial>
+    </link>
+
+    
+
+</robot>

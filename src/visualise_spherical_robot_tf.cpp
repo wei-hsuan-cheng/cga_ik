@@ -51,6 +51,8 @@ public:
     srb_utri_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_utri_1", 10);
     srb_utri_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_utri_2", 10);
 
+    srb_llink_0_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_llink_0", 10);
+
     
 
     RCLCPP_INFO(this->get_logger(), "visualise_spherical_robot_tf node started.");
@@ -76,6 +78,8 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_utri_0_pub_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_utri_1_pub_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_utri_2_pub_;
+
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_llink_0_pub_;
 
     double fs_, Ts_;
     int k_;
@@ -104,7 +108,7 @@ private:
         // Spherical robot geometries
         // Load geometric params from yaml file
         // Declare default parameters (in case the YAML file doesn't provide them)
-        this->declare_parameter<float>("r_b", 0.5);
+        this->declare_parameter<float>("r_b", 1.0);
         this->declare_parameter<float>("ratio_c_b", 1.0);
         this->declare_parameter<float>("ratio_e_b", 1.0);
 
@@ -218,6 +222,108 @@ private:
         // Publish the marker
         pub->publish(tri_marker);
     }
+
+    /**
+     * @brief Generate a set of 3D points approximating a circular arc.
+     * 
+     * @param center     The 3D center of the arc circle
+     * @param planeN     The normal vector of the plane containing the arc
+     * @param startDir   A unit vector in the plane, pointing at the start of the arc
+     * @param radius     The radius of the arc
+     * @param startDeg   Start angle (degrees)
+     * @param endDeg     End angle (degrees)
+     * @param steps      Number of segments to approximate the arc
+     * @return std::vector<Eigen::Vector3f> The list of 3D points along the arc
+     */
+    std::vector<Eigen::Vector3f> generateArcPoints(
+        const Eigen::Vector3f &center,
+        const Eigen::Vector3f &planeN,
+        const Eigen::Vector3f &startDir,
+        float radius,
+        float startDeg,
+        float endDeg,
+        int steps = 10)
+    {
+        std::vector<Eigen::Vector3f> arc_pts;
+        arc_pts.reserve(steps + 1);
+
+        float startRad = startDeg * M_PI / 180.0f;
+        float endRad   = endDeg   * M_PI / 180.0f;
+
+        // We'll assume planeN and startDir are unit vectors, orthonormal in-plane.
+        // If needed, we can orthonormalize them here, but let's assume the user does that.
+
+        float delta = (endRad - startRad) / float(steps);
+        for (int i = 0; i <= steps; i++)
+        {
+            float angle = startRad + i * delta;
+            // param eq: P(angle) = center + radius*( cos(angle)*startDir + sin(angle)*(planeN x startDir) )
+            // But we need a second in-plane direction orthonormal to startDir in planeN:
+            // We'll define crossDir = planeN.cross(startDir).normalized().
+            Eigen::Vector3f crossDir = planeN.cross(startDir).normalized();
+
+            float c = std::cos(angle);
+            float s = std::sin(angle);
+            Eigen::Vector3f arc_pt = center + radius * (c * startDir + s * crossDir);
+
+            arc_pts.push_back(arc_pt);
+        }
+        return arc_pts;
+    }
+
+
+    /**
+     * @brief Publish a thick line strip approximating a 45-deg arc.
+     * @param arc_pts A list of points along the arc (from generateArcPoints)
+     * @param pub A Marker publisher
+     * @param marker_id Unique marker ID
+     * @param ns Marker namespace
+     * @param frame_id The TF frame in which these points are expressed
+     * @param thickness The thickness of the line
+     * @param r_color, g_color, b_color, a_color The RGBA color
+     */
+    void publishArcLineStrip(
+        const std::vector<Eigen::Vector3f> &arc_pts,
+        rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
+        int marker_id,
+        const std::string &ns,
+        const std::string &frame_id,
+        float thickness,
+        float r_color,
+        float g_color,
+        float b_color,
+        float a_color)
+    {
+        visualization_msgs::msg::Marker marker;
+        marker.header.stamp = this->now();
+        marker.header.frame_id = frame_id;
+        marker.ns = ns;
+        marker.id = marker_id;
+        marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+        marker.action = visualization_msgs::msg::Marker::ADD;
+
+        // thickness in meters (scale.x is line width for LINE_STRIP)
+        marker.scale.x = thickness;
+
+        marker.color.r = r_color;
+        marker.color.g = g_color;
+        marker.color.b = b_color;
+        marker.color.a = a_color;
+
+        marker.pose.orientation.w = 1.0f; // no rotation offset
+
+        for (auto &pt : arc_pts)
+        {
+            geometry_msgs::msg::Point geom_pt;
+            geom_pt.x = pt.x();
+            geom_pt.y = pt.y();
+            geom_pt.z = pt.z();
+            marker.points.push_back(geom_pt);
+        }
+
+        pub->publish(marker);
+    }
+
 
   
     void getTargetPose()
@@ -447,6 +553,33 @@ private:
                          ik_result_.epl_2,
                          0.0f, 0.0f, 1.0f, 1.0f // RGBA
                         );
+        
+
+        // Publish the links (arc tubes)
+        Eigen::Vector3f center = ik_result_.rot_cen;
+        Eigen::Vector3f planeN = (ik_result_.elb_0 - ik_result_.rot_cen).cross(ik_result_.m_0 - ik_result_.rot_cen).normalized();
+        Eigen::Vector3f startDir = (ik_result_.m_0 - ik_result_.rot_cen).normalized();
+        float radius = ik_result_.r_s;
+
+        // create the arc
+        std::vector<Eigen::Vector3f> arcPts = generateArcPoints(
+                                                                center, planeN, startDir,
+                                                                radius,
+                                                                0.0f,   // startDeg
+                                                                45.0f,  // endDeg
+                                                                12      // steps for resolution
+                                                               );
+
+        // Now publish it as a thick line. For example:
+        publishArcLineStrip(
+                            arcPts,
+                            srb_llink_0_pub_,   // or some other publisher you have
+                            0,                // marker_id
+                            "llink_0",      // ns
+                            "srb_motor_0",        // frame_id
+                            0.01f,             // thickness in meters
+                            1.0f, 1.0f, 0.0f, 0.8f // RGBA (yellowish, 80% opaque)
+                           );
 
 
     }
