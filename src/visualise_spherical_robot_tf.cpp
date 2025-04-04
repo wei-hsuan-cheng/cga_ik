@@ -440,8 +440,8 @@ private:
         {
             visualization_msgs::msg::Marker sphere_marker;
             sphere_marker.header.stamp = this->now();
-            sphere_marker.header.frame_id = "srb_rot_cen";       // Frame in which the sphere is defined
             sphere_marker.ns = "outer_sphere";               // Namespace for grouping markers
+            sphere_marker.header.frame_id = "srb_rot_cen";       // Frame in which the sphere is defined
             sphere_marker.id = 0;                            // Marker ID
             sphere_marker.type = visualization_msgs::msg::Marker::SPHERE;
             sphere_marker.action = visualization_msgs::msg::Marker::ADD;
@@ -462,14 +462,11 @@ private:
             sphere_marker.scale.y = 2.0f * r_s;
             sphere_marker.scale.z = 2.0f * r_s;
 
-            // Example color: yellow, partially transparent
             sphere_marker.color.r = 0.0f;
             sphere_marker.color.g = 1.0f;
             sphere_marker.color.b = 0.0f;
             sphere_marker.color.a = 0.15f; // Opacity < 1.0 => semi-transparent
 
-            // Finally, publish it on your desired publisher
-            // e.g. srb_outer_sphere_pub_ or an existing marker publisher
             srb_outer_sphere_pub_->publish(sphere_marker);
         }
 
@@ -479,10 +476,10 @@ private:
                          srb_base_pub_,
                          0,                // marker_id
                          "srb_base",         // ns
-                         "srb_base",       // frame_id
-                         ik_result_.m_0,
-                         ik_result_.m_1,
-                         ik_result_.m_2,
+                         "srb_rot_cen",       // frame_id
+                         ik_result_.pos_rot_cen_m_0,
+                         ik_result_.pos_rot_cen_m_1,
+                         ik_result_.pos_rot_cen_m_2,
                          plate_thickness_,
                          1.0f, 1.0f, 1.0f, 1.0f // RGBA
                         );
@@ -492,10 +489,10 @@ private:
                          srb_epl_pub_,
                          0,                // marker_id
                          "srb_epl",         // ns
-                         "srb_base",       // frame_id
-                         ik_result_.epl_0,
-                         ik_result_.epl_1,
-                         ik_result_.epl_2,
+                         "srb_rot_cen",       // frame_id
+                         ik_result_.pos_rot_cen_epl_0,
+                         ik_result_.pos_rot_cen_epl_1,
+                         ik_result_.pos_rot_cen_epl_2,
                          plate_thickness_,
                          1.0f, 1.0f, 1.0f, 1.0f // RGBA
                         );
@@ -507,10 +504,10 @@ private:
                          srb_ltri_0_pub_,
                          0,                // marker_id
                          "srb_ltri_0",         // ns
-                         "srb_base",       // frame_id
-                         ik_result_.rot_cen,
-                         ik_result_.elb_0,
-                         ik_result_.m_0,
+                         "srb_rot_cen",       // frame_id
+                         Vector3f::Zero(), // at rot_cen
+                         ik_result_.pos_rot_cen_elb_0,
+                         ik_result_.pos_rot_cen_m_0,
                          plate_thickness_,
                          0.0f, 1.0f, 0.0f, 0.8f // RGBA
                         );
@@ -519,10 +516,10 @@ private:
                          srb_ltri_1_pub_,
                          0,                // marker_id
                          "srb_ltri_1",         // ns
-                         "srb_base",       // frame_id
-                         ik_result_.rot_cen,
-                         ik_result_.elb_1,
-                         ik_result_.m_1,
+                         "srb_rot_cen",       // frame_id
+                         Vector3f::Zero(), // at rot_cen
+                         ik_result_.pos_rot_cen_elb_1,
+                         ik_result_.pos_rot_cen_m_1,
                          plate_thickness_,
                          0.0f, 1.0f, 0.0f, 0.8f // RGBA
                         );
@@ -531,10 +528,10 @@ private:
                          srb_ltri_2_pub_,
                          0,                // marker_id
                          "srb_ltri_2",         // ns
-                         "srb_base",       // frame_id
-                         ik_result_.rot_cen,
-                         ik_result_.elb_2,
-                         ik_result_.m_2,
+                         "srb_rot_cen",       // frame_id
+                         Vector3f::Zero(), // at rot_cen
+                         ik_result_.pos_rot_cen_elb_2,
+                         ik_result_.pos_rot_cen_m_2,
                          plate_thickness_,
                          0.0f, 1.0f, 0.0f, 0.8f // RGBA
                         );
@@ -544,10 +541,10 @@ private:
                          srb_utri_0_pub_,
                          0,                // marker_id
                          "srb_utri_0",         // ns
-                         "srb_base",       // frame_id
-                         ik_result_.rot_cen,
-                         ik_result_.elb_0,
-                         ik_result_.epl_0,
+                         "srb_rot_cen",       // frame_id
+                         Vector3f::Zero(), // at rot_cen
+                         ik_result_.pos_rot_cen_elb_0,
+                         ik_result_.pos_rot_cen_epl_0,
                          plate_thickness_,
                          0.0f, 0.0f, 1.0f, 0.8f // RGBA
                         );
@@ -556,10 +553,10 @@ private:
                          srb_utri_1_pub_,
                          0,                // marker_id
                          "srb_utri_1",         // ns
-                         "srb_base",       // frame_id
-                         ik_result_.rot_cen,
-                         ik_result_.elb_1,
-                         ik_result_.epl_1,
+                         "srb_rot_cen",       // frame_id
+                         Vector3f::Zero(), // at rot_cen
+                         ik_result_.pos_rot_cen_elb_1,
+                         ik_result_.pos_rot_cen_epl_1,
                          plate_thickness_,
                          0.0f, 0.0f, 1.0f, 0.8f // RGBA
                         );
@@ -568,10 +565,10 @@ private:
                          srb_utri_2_pub_,
                          0,                // marker_id
                          "srb_utri_2",         // ns
-                         "srb_base",       // frame_id
-                         ik_result_.rot_cen,
-                         ik_result_.elb_2,
-                         ik_result_.epl_2,
+                         "srb_rot_cen",       // frame_id
+                         Vector3f::Zero(), // at rot_cen
+                         ik_result_.pos_rot_cen_elb_2,
+                         ik_result_.pos_rot_cen_epl_2,
                          plate_thickness_,
                          0.0f, 0.0f, 1.0f, 0.8f // RGBA
                         );
@@ -659,10 +656,6 @@ private:
     void debuggingInfo()
     {
         // // Compute the are of the end-plate triangle
-        // Vector3f v1 = ik_result_.epl_1 - ik_result_.epl_0;
-        // Vector3f v2 = ik_result_.epl_2 - ik_result_.epl_0;
-        // float A_tri_ep = (0.5 * v1.cross(v2)).norm();
-        // // std::cout << "A_tri_ep = " << A_tri_ep << std::endl;
 
         // // Compare the lengths
         // std::cout << "(Outer sphere radius) r_s = d_rc_elp_i = d_rc_elb_i = " << ik_result_.r_s << std::endl;
