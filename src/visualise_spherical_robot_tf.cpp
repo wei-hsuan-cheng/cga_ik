@@ -61,9 +61,8 @@ public:
     srb_ulink_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ulink_1", 10);
     srb_ulink_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ulink_2", 10);
 
-    
-
     RCLCPP_INFO(this->get_logger(), "visualise_spherical_robot_tf node started.");
+    
   }
 
 private:
