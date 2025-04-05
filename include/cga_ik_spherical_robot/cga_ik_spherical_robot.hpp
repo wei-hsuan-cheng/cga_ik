@@ -281,8 +281,12 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
     float th_2 = computeRelativeZAngle(quat_m_2_i, quat_m_2);
 
     // Compute the relative poses
-    Quaternionf quat_rot_cen = Quaternionf::Identity();
+    Quaternionf quat_rot_cen = Quaternionf::Identity(); // rot_cen w.r.t. base
     
+
+    Quaternionf quat_rot_cen_m_0_i = quat_rot_cen.inverse() * quat_m_0_i;
+    Quaternionf quat_rot_cen_m_1_i = quat_rot_cen.inverse() * quat_m_1_i;
+    Quaternionf quat_rot_cen_m_2_i = quat_rot_cen.inverse() * quat_m_2_i;
 
     CGA pos_rot_cen_m_0 = m_0 - rot_cen;
     CGA pos_rot_cen_m_1 = m_1 - rot_cen;
@@ -326,6 +330,10 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
     result.quat_rot_cen = quat_rot_cen;
 
     // Relative poses w.r.t the rotation centre frame
+    result.quat_rot_cen_m_0_i = quat_rot_cen_m_0_i;
+    result.quat_rot_cen_m_1_i = quat_rot_cen_m_1_i;
+    result.quat_rot_cen_m_2_i = quat_rot_cen_m_2_i;
+
     result.pos_rot_cen_m_0 = cga_utils::G2R(pos_rot_cen_m_0);
     result.pos_rot_cen_m_1 = cga_utils::G2R(pos_rot_cen_m_1);
     result.pos_rot_cen_m_2 = cga_utils::G2R(pos_rot_cen_m_2);

@@ -39,8 +39,8 @@ public:
     );
 
     // Publishers
-    joint_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/spherical_robot/joint_states", 10);
-    angles_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/spherical_robot/angles_array", 10);
+    joint_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
+    angles_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/spherical_robot/joint_states", 10);
 
     srb_outer_sphere_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_outer_sphere", 10);
 
@@ -183,6 +183,16 @@ private:
         // End-plate
         plate_color_ = link_color_;
         plate_thickness_ = 5.0f;
+
+        // Print initial poses of each component
+
+        // Motor positions and orientations
+        std::cout << "motor_0 pos [m] = " << ik_result_.pos_rot_cen_m_0.transpose() << std::endl;
+        std::cout << "motor_0 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_0.cast<double>() ).reverse().transpose() << std::endl;
+        std::cout << "motor_1 pos [m] = " << ik_result_.pos_rot_cen_m_1.transpose() << std::endl;
+        std::cout << "motor_1 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_1.cast<double>() ).reverse().transpose() << std::endl;
+        std::cout << "motor_2 pos [m] = " << ik_result_.pos_rot_cen_m_2.transpose() << std::endl;
+        std::cout << "motor_2 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_2.cast<double>() ).reverse().transpose() << std::endl;
 
     }
 
@@ -378,8 +388,8 @@ private:
         float th = (0.25 * M_PI) * std::sin(2.0 * M_PI * freq * t_);
         // float th = 0.0;
 
-        // Vector4d axis_ang(0.0, 0.0, 1.0, (double) th);
-        Vector4d axis_ang(0.0, 1.0, 0.0, (double) th);
+        Vector4d axis_ang(0.0, 0.0, 1.0, (double) th);
+        // Vector4d axis_ang(0.0, 1.0, 0.0, (double) th);
         // Vector4d axis_ang(1.0, 0.0, 0.0, (double) th);
 
         Vector3d so3 = (axis_ang.head(3)).normalized() * axis_ang(3);
@@ -666,7 +676,7 @@ private:
         auto end = std::chrono::steady_clock::now();
         double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
         double frequency = (elapsed_ms > 0.0) ? 1000.0 / elapsed_ms : 0.0;
-        RCLCPP_INFO(this->get_logger(), "Ts = %.2f [ms], fs = %.2f [Hz]", elapsed_ms, frequency);
+        // RCLCPP_INFO(this->get_logger(), "Ts = %.2f [ms], fs = %.2f [Hz]", elapsed_ms, frequency);
 
 
         // Publish IK solution:

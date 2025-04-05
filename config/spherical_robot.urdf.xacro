@@ -1,92 +1,124 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<robot xmlns:xacro="http://ros.org/wiki/xacro" name="spherical_robot">
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro"  name="robot">
 
-    <!-- base radius (not used for geometry in this snippet, but typically you would) -->
-    <xacro:property name="r_b" value="0.5" />
+    <!-- This will include all the contents of example_include.xacro first. Go check it out! -->
+    <xacro:include filename="example_include.xacro" />
+
+    <!-- Load spherical robot geometric parameters: -->
+    <xacro:arg name="r_b" default="1.0" />
+    <xacro:arg name="ratio_c_b" default="1.0" />
+    <xacro:arg name="ratio_e_b" default="1.0" />
+    <!-- Convert them into xacro properties: -->
+    <xacro:property name="r_b" value="$(arg r_b)" />
+    <xacro:property name="ratio_c_b" value="$(arg ratio_c_b)" />
+    <xacro:property name="ratio_e_b" value="$(arg ratio_e_b)" />
+
+    <xacro:property name="arm_length" value="1" />
+    <xacro:property name="arm_radius" value="0.1" />
 
 
-    <!-- ============= World link ============= -->
+    
+    <!-- world -->
     <link name="world"></link>
 
-    <!-- ============= Joint: world to base_link ============= -->
-    <joint name="base_joint" type="fixed">
+
+    <!-- world to base -->
+    <joint name="joint_world_base" type="fixed">
+        <origin xyz="${4 * r_b} 0 0" rpy="0 0 0"/>
         <parent link="world"/>
-        <child link="base_link"/>        
-        <origin xyz="4.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <child link="base"/>        
     </joint>
-    
 
 
-    <!-- ============= Base link ============= -->
-    <link name="base_link">
-    <visual>
-        <geometry>
-        <box>
-            <size>0.2 0.2 0.02</size>
-        </box>
-        </geometry>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-        <material>
-        <color rgba="0.8 0.8 0.8 1.0"/>
-        </material>
-    </visual>
+    <!-- base -->
+    <link name="base"></link>
 
-    <collision>
-        <geometry>
-        <box>
-            <size>0.2 0.2 0.02</size>
-        </box>
-        </geometry>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-    </collision>
 
-    <inertial>
-        <origin xyz="0 0 0"/>
-        <mass value="1.0"/>
-        <inertia ixx="0.1" ixy="0.0" ixz="0.0"
-                iyy="0.1" iyz="0.0" izz="0.1"/>
-    </inertial>
-    </link>
+    <!-- base to rot_cen -->
+    <joint name="joint_base_rot_cen" type="fixed">
+        <origin xyz="0 0 ${ratio_c_b * r_b}" rpy="0 0 0"/>
+        <parent link="base"/>
+        <child link="rot_cen"/>        
+    </joint>
 
-    <!-- ============= Joint: base_link to motor_0_link ============= -->
-    <joint name="base_to_motor_0" type="revolute">
-        <parent link="base_link"/>
-        <child link="motor_0_link"/>
-        <origin xyz="0 0 0.01" rpy="0 0 0"/>
+
+    <!-- rot_cen -->
+    <link name="rot_cen"></link>
+
+
+    <!-- rot_cen to motor 0 -->
+    <joint name="joint_0" type="revolute">
+        <parent link="rot_cen"/>
+        <child link="motor_0"/>
+
+        <origin xyz="0.5 0 -0.1665" rpy="-1.24935 -0 1.5708"/>
         <axis xyz="0 0 1"/>
-        <limit lower="-3.14" upper="3.14" effort="10" velocity="10"/>
+
+        <limit lower="0" upper="${pi/2}" velocity="100" effort="100"/> 
     </joint>
 
-
-
-    <!-- ============= motor_0 link ============= -->
-    <link name="motor_0_link">
-    <visual>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-        <geometry>
-        <!-- A small cylinder as a placeholder representation -->
-        <cylinder length="0.1" radius="0.02"/>
-        </geometry>
-        <material>
-        <color rgba="0.0 0.8 0.0 1.0"/>
-        </material>
-    </visual>
-
-    <collision>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-        <geometry>
-        <cylinder length="0.1" radius="0.02"/>
-        </geometry>
-    </collision>
-
-    <inertial>
-        <origin xyz="0 0 0"/>
-        <mass value="0.1"/>
-        <inertia ixx="0.01" ixy="0.0" ixz="0.0"
-                iyy="0.01" iyz="0.0" izz="0.01"/>
-    </inertial>
+    
+    <link name="motor_0">
+        <visual>
+            <origin xyz="${arm_length/2} 0 0" rpy="0 ${pi/2} 0"/>
+            <geometry>                
+                <cylinder length="${arm_length}" radius="${arm_radius}" />
+            </geometry>
+            <material name="orange" />
+        </visual>
+        <xacro:inertial_cylinder mass="1.0" length="${arm_length}" radius="${arm_radius}">
+            <origin xyz="${arm_length/2} 0 0" rpy="0 ${pi/2} 0"/>
+        </xacro:inertial_cylinder>
     </link>
 
-    
+
+    <!-- rot_cen to motor 1 -->
+    <joint name="joint_1" type="revolute">
+        <parent link="rot_cen"/>
+        <child link="motor_1"/>
+
+        <origin xyz="-0.25 0.433013 -0.1665" rpy="-1.24935 -1.66282e-09 -2.61799"/>
+        <axis xyz="0 0 1"/>
+
+        <limit lower="0" upper="${pi/2}" velocity="100" effort="100"/> 
+    </joint>
+
+    <link name="motor_1">
+        <!-- <visual>
+            <origin xyz="${arm_length/2} 0 0" rpy="0 ${pi/2} 0"/>
+            <geometry>                
+                <cylinder length="${arm_length}" radius="${arm_radius}" />
+            </geometry>
+            <material name="orange" />
+        </visual>
+        <xacro:inertial_cylinder mass="1.0" length="${arm_length}" radius="${arm_radius}">
+            <origin xyz="${arm_length/2} 0 0" rpy="0 ${pi/2} 0"/>
+        </xacro:inertial_cylinder> -->
+    </link>
+
+
+    <!-- rot_cen to motor 2 -->
+    <joint name="joint_2" type="revolute">
+        <parent link="rot_cen"/>
+        <child link="motor_2"/>
+
+        <origin xyz="-0.25 -0.433013   -0.1665" rpy="-1.24935 -6.45836e-08 -0.523599"/>
+        <axis xyz="0 0 1"/>
+
+        <limit lower="0" upper="${pi/2}" velocity="100" effort="100"/> 
+    </joint>
+
+    <link name="motor_2">
+        <!-- <visual>
+            <origin xyz="${arm_length/2} 0 0" rpy="0 ${pi/2} 0"/>
+            <geometry>                
+                <cylinder length="${arm_length}" radius="${arm_radius}" />
+            </geometry>
+            <material name="orange" />
+        </visual>
+        <xacro:inertial_cylinder mass="1.0" length="${arm_length}" radius="${arm_radius}">
+            <origin xyz="${arm_length/2} 0 0" rpy="0 ${pi/2} 0"/>
+        </xacro:inertial_cylinder> -->
+    </link>
 
 </robot>
