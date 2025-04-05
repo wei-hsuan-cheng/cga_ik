@@ -46,10 +46,10 @@
     <link name="srb_rot_cen"></link>
 
     <!-- base to rot_cen -->
-    <joint name="joint_base_rot_cen" type="fixed">
+    <joint name="joint_base_rot_cen" type="floating">
         <parent link="srb_base"/>
         <child link="srb_rot_cen"/>   
-        <origin xyz="0 0 ${r_c}" rpy="0 0 0"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
     </joint>
 
 

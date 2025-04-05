@@ -391,6 +391,9 @@ private:
     {
         
         // Poses w.r.t. the rotation centre
+        // Rotation centre
+        publishTF(ik_result_.rot_cen, ik_result_.quat_rot_cen, "srb_rot_cen", "srb_base");
+
         // Motors of the robot
         publishTF(ik_result_.pos_rot_cen_m_0, ik_result_.quat_rot_cen_m_0, "srb_motor_0", "srb_rot_cen");
         publishTF(ik_result_.pos_rot_cen_m_1, ik_result_.quat_rot_cen_m_1, "srb_motor_1", "srb_rot_cen");
