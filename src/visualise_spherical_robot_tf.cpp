@@ -25,7 +25,7 @@ public:
     initTimeSpec();
     // Initialise CGA IK for spherical robot
     initSRBIK();
-    // Initialise robot visualisation
+    // Initialise robot visuals
     initRobotVisual();
 
 
@@ -62,7 +62,7 @@ public:
     srb_ulink_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ulink_2", 10);
 
     RCLCPP_INFO(this->get_logger(), "visualise_spherical_robot_tf node started.");
-    
+
   }
 
 private:
@@ -103,9 +103,10 @@ private:
     CGA e_principal_, rot_cen_, s_0_, s_1_;
     cga_ik_spherical_robot::SphericalRobotIKResult ik_result_;
 
-    Vector4f link_color_;
-    float link_thickness_;
-    float plate_thickness_;
+    Vector4f outer_sphere_color_;
+    std::vector<Vector3f> linkArcPts_;
+    Vector4f utri_color_, ltri_color_, link_color_, plate_color_;
+    float link_thickness_, plate_thickness_;
     
 
     void initTimeSpec()
@@ -159,9 +160,30 @@ private:
 
     void initRobotVisual()
     {
+        // Outer sphere
+        outer_sphere_color_ = Vector4f(0.0f, 1.0f, 0.0f, 0.15f);
+
+        // Triangles
+        utri_color_ = Vector4f(0.0f, 0.0f, 1.0f, 0.8f);
+        ltri_color_ = Vector4f(0.0f, 1.0f, 0.0f, 0.8f);
+
+        // Links
+        Vector3f centre = Vector3f(0.0f, 0.0f, ik_result_.r_s);
+        Vector3f planeN = Vector3f(0.0f, -1.0f, 0.0f);
+        Vector3f startDir = Vector3f(0.0f, 0.0f, -1.0f);
+        float radius = ik_result_.r_s;
+        linkArcPts_ = generateArcPoints(centre, planeN, startDir, radius,
+                                        0.0f,   // startDeg
+                                        90.0f,  // endDeg
+                                        12      // steps for resolution
+                                        );
         link_color_ = Vector4f(1.0f, 1.0f, 1.0f, 0.8f);
         link_thickness_ = 0.05f;
+        
+        // End-plate
+        plate_color_ = link_color_;
         plate_thickness_ = 5.0f;
+
     }
 
     void publishTF(const Vector3f &p, const Quaternionf &q, const std::string &child, const std::string &parent)
@@ -183,6 +205,39 @@ private:
         tf_broadcaster_->sendTransform(tf);
     };
 
+    void publishSphereMarker(
+        rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
+        int marker_id,
+        const std::string &ns,
+        const std::string &frame_id,
+        float radius,
+        const Vector3f &centre,
+        Vector4f rgba_color)
+    {
+        visualization_msgs::msg::Marker sphere_marker;
+        sphere_marker.header.stamp = this->now();
+        sphere_marker.header.frame_id = frame_id;
+        sphere_marker.ns = ns;
+        sphere_marker.id = marker_id;
+        sphere_marker.type = visualization_msgs::msg::Marker::SPHERE;
+        sphere_marker.action = visualization_msgs::msg::Marker::ADD;
+
+        sphere_marker.scale.x = radius * 2.0f; // Diameter
+        sphere_marker.scale.y = radius * 2.0f; // Diameter
+        sphere_marker.scale.z = radius * 2.0f; // Diameter
+
+        sphere_marker.pose.position.x = centre.x();
+        sphere_marker.pose.position.y = centre.y();
+        sphere_marker.pose.position.z = centre.z();
+
+        sphere_marker.color.r = rgba_color(0);
+        sphere_marker.color.g = rgba_color(1);
+        sphere_marker.color.b = rgba_color(2);
+        sphere_marker.color.a = rgba_color(3);
+
+        pub->publish(sphere_marker);
+    }
+
     void publishTriMarker(
         rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
         int marker_id,
@@ -192,11 +247,7 @@ private:
         const Vector3f &p1,
         const Vector3f &p2,
         float thickness,
-        float r_color,  // Red   [0..1]
-        float g_color,  // Green [0..1]
-        float b_color,  // Blue  [0..1]
-        float a_color   // Alpha [0..1]
-        )
+        Vector4f rgba_color)
     {
         // Build a TRIANGLE_LIST marker from the 3 points
         visualization_msgs::msg::Marker tri_marker;
@@ -213,10 +264,10 @@ private:
         tri_marker.scale.z = 1.0f;
 
         // Use the color passed in
-        tri_marker.color.r = r_color;
-        tri_marker.color.g = g_color;
-        tri_marker.color.b = b_color;
-        tri_marker.color.a = a_color;
+        tri_marker.color.r = rgba_color(0);
+        tri_marker.color.g = rgba_color(1);
+        tri_marker.color.b = rgba_color(2);
+        tri_marker.color.a = rgba_color(3);
 
         // No rotation offset in the marker's own pose
         tri_marker.pose.orientation.w = 1.0f;
@@ -238,18 +289,6 @@ private:
         pub->publish(tri_marker);
     }
 
-    /**
-     * @brief Generate a set of 3D points approximating a circular arc.
-     * 
-     * @param centre     The 3D centre of the arc circle
-     * @param planeN     The normal vector of the plane containing the arc
-     * @param startDir   A unit vector in the plane, pointing at the start of the arc
-     * @param radius     The radius of the arc
-     * @param startDeg   Start angle (degrees)
-     * @param endDeg     End angle (degrees)
-     * @param steps      Number of segments to approximate the arc
-     * @return std::vector<Vector3f> The list of 3D points along the arc
-     */
     std::vector<Vector3f> generateArcPoints(
         const Vector3f &centre,
         const Vector3f &planeN,
@@ -287,17 +326,6 @@ private:
         return arc_pts;
     }
 
-
-    /**
-     * @brief Publish a thick line strip approximating a 90-deg arc.
-     * @param arc_pts A list of points along the arc (from generateArcPoints)
-     * @param pub A Marker publisher
-     * @param marker_id Unique marker ID
-     * @param ns Marker namespace
-     * @param frame_id The TF frame in which these points are expressed
-     * @param thickness The thickness of the line
-     * @param rgba_color The RGBA color
-     */
     void publishArcLineStrip(
         const std::vector<Vector3f> &arc_pts,
         rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
@@ -436,38 +464,15 @@ private:
     void publisherMarkers()
     {
         // Publish outer sphere marker
-        {
-            visualization_msgs::msg::Marker sphere_marker;
-            sphere_marker.header.stamp = this->now();
-            sphere_marker.ns = "outer_sphere";               // Namespace for grouping markers
-            sphere_marker.header.frame_id = "srb_rot_cen";       // Frame in which the sphere is defined
-            sphere_marker.id = 0;                            // Marker ID
-            sphere_marker.type = visualization_msgs::msg::Marker::SPHERE;
-            sphere_marker.action = visualization_msgs::msg::Marker::ADD;
-
-            // Position the sphere at the robot's rotation centre:
-            sphere_marker.pose.position.x = 0.0;
-            sphere_marker.pose.position.y = 0.0;
-            sphere_marker.pose.position.z = 0.0;
-            
-            sphere_marker.pose.orientation.w = ik_result_.quat_rot_cen.w();
-            sphere_marker.pose.orientation.x = ik_result_.quat_rot_cen.x();
-            sphere_marker.pose.orientation.y = ik_result_.quat_rot_cen.y();
-            sphere_marker.pose.orientation.z = ik_result_.quat_rot_cen.z();
-
-            // The scale fields define the SPHERE's full diameter along each axis
-            float r_s = ik_result_.r_s;  // The sphere radius from your IK result
-            sphere_marker.scale.x = 2.0f * r_s;
-            sphere_marker.scale.y = 2.0f * r_s;
-            sphere_marker.scale.z = 2.0f * r_s;
-
-            sphere_marker.color.r = 0.0f;
-            sphere_marker.color.g = 1.0f;
-            sphere_marker.color.b = 0.0f;
-            sphere_marker.color.a = 0.15f; // Opacity < 1.0 => semi-transparent
-
-            srb_outer_sphere_pub_->publish(sphere_marker);
-        }
+        publishSphereMarker(
+            srb_outer_sphere_pub_,
+            0,                // marker_id
+            "srb_outer_sphere",         // ns
+            "srb_rot_cen",       // frame_id
+            ik_result_.r_s,
+            Vector3f::Zero(), // at rot_cen
+            outer_sphere_color_ // RGBA
+        );
 
         // Publish triangle markers
         // Base
@@ -480,7 +485,7 @@ private:
                          ik_result_.pos_rot_cen_m_1,
                          ik_result_.pos_rot_cen_m_2,
                          plate_thickness_,
-                         1.0f, 1.0f, 1.0f, 1.0f // RGBA
+                         plate_color_
                         );
 
         // End-plate
@@ -493,7 +498,7 @@ private:
                          ik_result_.pos_rot_cen_epl_1,
                          ik_result_.pos_rot_cen_epl_2,
                          plate_thickness_,
-                         1.0f, 1.0f, 1.0f, 1.0f // RGBA
+                         plate_color_
                         );
         
         
@@ -508,7 +513,7 @@ private:
                          ik_result_.pos_rot_cen_elb_0,
                          ik_result_.pos_rot_cen_m_0,
                          plate_thickness_,
-                         0.0f, 1.0f, 0.0f, 0.8f // RGBA
+                         ltri_color_
                         );
         
         publishTriMarker(
@@ -520,7 +525,7 @@ private:
                          ik_result_.pos_rot_cen_elb_1,
                          ik_result_.pos_rot_cen_m_1,
                          plate_thickness_,
-                         0.0f, 1.0f, 0.0f, 0.8f // RGBA
+                         ltri_color_
                         );
         
         publishTriMarker(
@@ -532,7 +537,7 @@ private:
                          ik_result_.pos_rot_cen_elb_2,
                          ik_result_.pos_rot_cen_m_2,
                          plate_thickness_,
-                         0.0f, 1.0f, 0.0f, 0.8f // RGBA
+                         ltri_color_
                         );
 
         // Upper triangles for rot_cen-elb-epl
@@ -545,7 +550,7 @@ private:
                          ik_result_.pos_rot_cen_elb_0,
                          ik_result_.pos_rot_cen_epl_0,
                          plate_thickness_,
-                         0.0f, 0.0f, 1.0f, 0.8f // RGBA
+                         utri_color_
                         );
         
         publishTriMarker(
@@ -557,7 +562,7 @@ private:
                          ik_result_.pos_rot_cen_elb_1,
                          ik_result_.pos_rot_cen_epl_1,
                          plate_thickness_,
-                         0.0f, 0.0f, 1.0f, 0.8f // RGBA
+                         utri_color_
                         );
         
         publishTriMarker(
@@ -569,28 +574,13 @@ private:
                          ik_result_.pos_rot_cen_elb_2,
                          ik_result_.pos_rot_cen_epl_2,
                          plate_thickness_,
-                         0.0f, 0.0f, 1.0f, 0.8f // RGBA
+                         utri_color_
                         );
         
 
-        // Publish the links
-        Vector3f centre = Vector3f(0.0f, 0.0f, ik_result_.r_s);
-        Vector3f planeN = Vector3f(0.0f, -1.0f, 0.0f);
-        Vector3f startDir = Vector3f(0.0f, 0.0f, -1.0f);
-        float radius = ik_result_.r_s;
-
-        // Create the arcs
-        std::vector<Vector3f> arcPts = generateArcPoints(
-                                                         centre, planeN, startDir,
-                                                         radius,
-                                                         0.0f,   // startDeg
-                                                         90.0f,  // endDeg
-                                                         12      // steps for resolution
-                                                        );
-
         // Publish links as thick lines:
         publishArcLineStrip(
-                            arcPts,
+                            linkArcPts_,
                             srb_llink_0_pub_,
                             0,                // marker_id
                             "llink_0",      // ns
@@ -600,7 +590,7 @@ private:
                            );
         
         publishArcLineStrip(
-                            arcPts,
+                            linkArcPts_,
                             srb_llink_1_pub_,
                             0,                // marker_id
                             "llink_1",      // ns
@@ -610,7 +600,7 @@ private:
                            );
         
         publishArcLineStrip(
-                            arcPts,
+                            linkArcPts_,
                             srb_llink_2_pub_,
                             0,                // marker_id
                             "llink_2",      // ns
@@ -620,7 +610,7 @@ private:
                            );
         
         publishArcLineStrip(
-                            arcPts,
+                            linkArcPts_,
                             srb_ulink_0_pub_,
                             0,                // marker_id
                             "ulink_0",      // ns
@@ -630,7 +620,7 @@ private:
                            );
         
         publishArcLineStrip(
-                            arcPts,
+                            linkArcPts_,
                             srb_ulink_1_pub_,
                             0,                // marker_id
                             "ulink_1",      // ns
@@ -640,7 +630,7 @@ private:
                            );
         
         publishArcLineStrip(
-                            arcPts,
+                            linkArcPts_,
                             srb_ulink_2_pub_,
                             0,                // marker_id
                             "ulink_2",      // ns
