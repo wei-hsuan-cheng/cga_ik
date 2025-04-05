@@ -78,7 +78,7 @@ install(DIRECTORY
 )
 
 install(
-  DIRECTORY launch config
+  DIRECTORY launch config meshes
   DESTINATION share/${PROJECT_NAME}
 )
 

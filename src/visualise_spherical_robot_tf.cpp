@@ -187,6 +187,7 @@ private:
         // Print initial poses of each component
 
         // Motor positions and orientations
+        std::cout << "Initial position and orientation of the spherical robot:" << std::endl;
         std::cout << "motor_0 pos [m] = " << ik_result_.pos_rot_cen_m_0.transpose() << std::endl;
         std::cout << "motor_0 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_0.cast<double>() ).reverse().transpose() << std::endl;
         std::cout << "motor_1 pos [m] = " << ik_result_.pos_rot_cen_m_1.transpose() << std::endl;
