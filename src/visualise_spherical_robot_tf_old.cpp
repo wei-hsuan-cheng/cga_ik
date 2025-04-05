@@ -44,12 +44,22 @@ public:
 
     srb_outer_sphere_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_outer_sphere", 10);
 
+    srb_epl_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_epl", 10);
+    srb_base_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_base", 10);
+
     srb_ltri_0_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ltri_0", 10);
     srb_ltri_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ltri_1", 10);
     srb_ltri_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ltri_2", 10);
     srb_utri_0_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_utri_0", 10);
     srb_utri_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_utri_1", 10);
     srb_utri_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_utri_2", 10);
+
+    srb_llink_0_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_llink_0", 10);
+    srb_llink_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_llink_1", 10);
+    srb_llink_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_llink_2", 10);
+    srb_ulink_0_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ulink_0", 10);
+    srb_ulink_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ulink_1", 10);
+    srb_ulink_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ulink_2", 10);
 
     RCLCPP_INFO(this->get_logger(), "visualise_spherical_robot_tf node started.");
 
@@ -67,12 +77,21 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_outer_sphere_pub_;
 
     // Publisher for the triangle marker
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_epl_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_base_pub_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_ltri_0_pub_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_ltri_1_pub_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_ltri_2_pub_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_utri_0_pub_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_utri_1_pub_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_utri_2_pub_;
+
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_llink_0_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_llink_1_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_llink_2_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_ulink_0_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_ulink_1_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_ulink_2_pub_;
 
     double fs_, Ts_;
     int k_;
@@ -137,17 +156,6 @@ private:
                                                                      rot_cen_, 
                                                                      s_0_, s_1_, 
                                                                      Quaternionf::Identity());
-        
-        // Print initial poses of each component
-        // Motor positions and orientations
-        std::cout << "Initial position and orientation of the spherical robot:" << std::endl;
-        std::cout << "motor_0 pos [m] = " << ik_result_.pos_rot_cen_m_0.transpose() << std::endl;
-        std::cout << "motor_0 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_0.cast<double>() ).reverse().transpose() << std::endl;
-        std::cout << "motor_1 pos [m] = " << ik_result_.pos_rot_cen_m_1.transpose() << std::endl;
-        std::cout << "motor_1 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_1.cast<double>() ).reverse().transpose() << std::endl;
-        std::cout << "motor_2 pos [m] = " << ik_result_.pos_rot_cen_m_2.transpose() << std::endl;
-        std::cout << "motor_2 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_2.cast<double>() ).reverse().transpose() << std::endl;
-
     }
 
     void initRobotVisual()
@@ -158,6 +166,34 @@ private:
         // Triangles
         utri_color_ = Vector4f(0.0f, 0.0f, 1.0f, 0.8f);
         ltri_color_ = Vector4f(0.0f, 1.0f, 0.0f, 0.8f);
+
+        // Links
+        Vector3f centre = Vector3f(0.0f, 0.0f, ik_result_.r_s);
+        Vector3f planeN = Vector3f(0.0f, -1.0f, 0.0f);
+        Vector3f startDir = Vector3f(0.0f, 0.0f, -1.0f);
+        float radius = ik_result_.r_s;
+        linkArcPts_ = generateArcPoints(centre, planeN, startDir, radius,
+                                        0.0f,   // startDeg
+                                        90.0f,  // endDeg
+                                        12      // steps for resolution
+                                        );
+        link_color_ = Vector4f(1.0f, 1.0f, 1.0f, 0.8f);
+        link_thickness_ = 0.05f;
+        
+        // End-plate
+        plate_color_ = link_color_;
+        plate_thickness_ = 5.0f;
+
+        // Print initial poses of each component
+
+        // Motor positions and orientations
+        std::cout << "Initial position and orientation of the spherical robot:" << std::endl;
+        std::cout << "motor_0 pos [m] = " << ik_result_.pos_rot_cen_m_0.transpose() << std::endl;
+        std::cout << "motor_0 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_0.cast<double>() ).reverse().transpose() << std::endl;
+        std::cout << "motor_1 pos [m] = " << ik_result_.pos_rot_cen_m_1.transpose() << std::endl;
+        std::cout << "motor_1 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_1.cast<double>() ).reverse().transpose() << std::endl;
+        std::cout << "motor_2 pos [m] = " << ik_result_.pos_rot_cen_m_2.transpose() << std::endl;
+        std::cout << "motor_2 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_2.cast<double>() ).reverse().transpose() << std::endl;
 
     }
 
@@ -389,8 +425,27 @@ private:
 
     void publishAllTransforms()
     {
-        
-        // Poses w.r.t. the rotation centre
+        {
+            geometry_msgs::msg::TransformStamped base_tf;
+            base_tf.header.stamp = this->now();
+            base_tf.header.frame_id = "world";
+            base_tf.child_frame_id = "srb_base";
+
+            Vector4d axis_ang_w_b(1.0, 0.0, 0.0, 
+                                  0.0 * M_PI);
+            Quaterniond quat_w_b = RM::so32Quat( (axis_ang_w_b.head(3)).normalized() * axis_ang_w_b(3) );
+
+            base_tf.transform.rotation.w = quat_w_b.w();
+            base_tf.transform.rotation.x = quat_w_b.x();
+            base_tf.transform.rotation.y = quat_w_b.y();
+            base_tf.transform.rotation.z = quat_w_b.z();
+            
+            tf_broadcaster_->sendTransform(base_tf);
+        }
+
+        // Rotation centre
+        publishTF(ik_result_.rot_cen, ik_result_.quat_rot_cen, "srb_rot_cen", "srb_base");
+
         // Motors of the robot
         publishTF(ik_result_.pos_rot_cen_m_0, ik_result_.quat_rot_cen_m_0, "srb_motor_0", "srb_rot_cen");
         publishTF(ik_result_.pos_rot_cen_m_1, ik_result_.quat_rot_cen_m_1, "srb_motor_1", "srb_rot_cen");
@@ -410,12 +465,12 @@ private:
         publishTF(ik_result_.pos_rot_cen_elb_1, ik_result_.quat_rot_cen_elb_1, "srb_elbow_1", "srb_rot_cen");
         publishTF(ik_result_.pos_rot_cen_elb_2, ik_result_.quat_rot_cen_elb_2, "srb_elbow_2", "srb_rot_cen");
 
+
         // // (Optional) end-effector
         // Vector3f pos_yc_ee = (ik_result_.r_s - ik_result_.d) * cga_utils::G2R(e_principal_);
         // publishTF(pos_yc_ee, Quaternionf::Identity(), "srb_ee", "srb_epl_c");
 
     }
-    
 
     void publisherMarkers()
     {
@@ -431,6 +486,34 @@ private:
         );
 
         // Publish triangle markers
+        // Base
+        publishTriMarker(
+                         srb_base_pub_,
+                         0,                // marker_id
+                         "srb_base",         // ns
+                         "srb_rot_cen",       // frame_id
+                         ik_result_.pos_rot_cen_m_0,
+                         ik_result_.pos_rot_cen_m_1,
+                         ik_result_.pos_rot_cen_m_2,
+                         plate_thickness_,
+                         plate_color_
+                        );
+
+        // End-plate
+        publishTriMarker(
+                         srb_epl_pub_,
+                         0,                // marker_id
+                         "srb_epl",         // ns
+                         "srb_rot_cen",       // frame_id
+                         ik_result_.pos_rot_cen_epl_0,
+                         ik_result_.pos_rot_cen_epl_1,
+                         ik_result_.pos_rot_cen_epl_2,
+                         plate_thickness_,
+                         plate_color_
+                        );
+        
+        
+        
         // Lower triangles for rot_cen-elb-m
         publishTriMarker(
                          srb_ltri_0_pub_,
@@ -504,7 +587,68 @@ private:
                          plate_thickness_,
                          utri_color_
                         );
+        
 
+        // Publish links as thick lines:
+        publishArcLineStrip(
+                            linkArcPts_,
+                            srb_llink_0_pub_,
+                            0,                // marker_id
+                            "llink_0",      // ns
+                            "srb_motor_0",        // frame_id
+                            link_thickness_,             // thickness in metres
+                            link_color_
+                           );
+        
+        publishArcLineStrip(
+                            linkArcPts_,
+                            srb_llink_1_pub_,
+                            0,                // marker_id
+                            "llink_1",      // ns
+                            "srb_motor_1",        // frame_id
+                            link_thickness_,             // thickness in metres
+                            link_color_
+                           );
+        
+        publishArcLineStrip(
+                            linkArcPts_,
+                            srb_llink_2_pub_,
+                            0,                // marker_id
+                            "llink_2",      // ns
+                            "srb_motor_2",        // frame_id
+                            link_thickness_,             // thickness in metres
+                            link_color_
+                           );
+        
+        publishArcLineStrip(
+                            linkArcPts_,
+                            srb_ulink_0_pub_,
+                            0,                // marker_id
+                            "ulink_0",      // ns
+                            "srb_elbow_0",        // frame_id
+                            link_thickness_,             // thickness in metres
+                            link_color_
+                           );
+        
+        publishArcLineStrip(
+                            linkArcPts_,
+                            srb_ulink_1_pub_,
+                            0,                // marker_id
+                            "ulink_1",      // ns
+                            "srb_elbow_1",        // frame_id
+                            link_thickness_,             // thickness in metres
+                            link_color_
+                           );
+        
+        publishArcLineStrip(
+                            linkArcPts_,
+                            srb_ulink_2_pub_,
+                            0,                // marker_id
+                            "ulink_2",      // ns
+                            "srb_elbow_2",        // frame_id
+                            link_thickness_,             // thickness in metres
+                            link_color_
+                           );
 
 
     }
@@ -533,7 +677,7 @@ private:
         auto end = std::chrono::steady_clock::now();
         double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
         double frequency = (elapsed_ms > 0.0) ? 1000.0 / elapsed_ms : 0.0;
-        RCLCPP_INFO(this->get_logger(), "Ts = %.2f [ms], fs = %.2f [Hz]", elapsed_ms, frequency);
+        // RCLCPP_INFO(this->get_logger(), "Ts = %.2f [ms], fs = %.2f [Hz]", elapsed_ms, frequency);
 
 
         // Publish IK solution:

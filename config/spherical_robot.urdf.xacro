@@ -15,119 +15,196 @@
     <xacro:property name="r_c" value="$(eval ratio_c_b * r_b)"/>
     <xacro:property name="r_e" value="$(eval ratio_e_b * r_b)"/>
     
+
     <!-- world -->
     <link name="world"></link>
 
 
-    <!-- world to base -->
-    <joint name="joint_world_base" type="fixed">
-        <parent link="world"/>
-        <child link="base"/>   
-        <origin xyz="${3 * r_b} 0 0" rpy="0 0 0"/>
-        <!-- <origin xyz="0 0 0" rpy="0 0 0"/> -->
-    </joint>
-
-
     <!-- base -->
-    <link name="base">
+    <link name="srb_base">
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
                 <mesh filename="package://cga_ik/meshes/base_plate.stl" 
-                    scale="${r_b} 
-                            ${r_b} 
-                            ${r_b}"/>
+                      scale="${r_b} 
+                             ${r_b} 
+                             ${r_b}"/>
             </geometry>
             <material name="white" />
         </visual>
     </link>
 
-
-    <!-- base to rot_cen -->
-    <joint name="joint_base_rot_cen" type="fixed">
-        <origin xyz="0 0 ${r_c}" rpy="0 0 0"/>
-        <parent link="base"/>
-        <child link="rot_cen"/>        
+    <!-- world to base -->
+    <joint name="joint_world_base" type="fixed">
+        <parent link="world"/>
+        <child link="srb_base"/>   
+        <origin xyz="0 0 0" rpy="0 0 0"/>
     </joint>
 
 
     <!-- rot_cen -->
-    <link name="rot_cen"></link>
+    <link name="srb_rot_cen"></link>
 
-
-    <!-- rot_cen to motor 0 -->
-    <joint name="joint_0" type="revolute">
-        <parent link="rot_cen"/>
-        <child link="motor_0"/>
-
-        <origin xyz="0.5 0 -0.1665" rpy="-1.24935 -0 1.5708"/>
-        <axis xyz="0 0 1"/>
-
-        <limit lower="0" upper="${pi/2}" velocity="100" effort="100"/> 
+    <!-- base to rot_cen -->
+    <joint name="joint_base_rot_cen" type="fixed">
+        <parent link="srb_base"/>
+        <child link="srb_rot_cen"/>   
+        <origin xyz="0 0 ${r_c}" rpy="0 0 0"/>
     </joint>
 
+
+    <!-- motor_0 -->
+    <link name="srb_motor_0">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://cga_ik/meshes/arc_link_thin.stl" 
+                    scale="${ sqrt(r_b * r_b  + r_c * r_c) } 
+                           ${ sqrt(r_b * r_b  + r_c * r_c) } 
+                           ${ sqrt(r_b * r_b  + r_c * r_c) }"/>
+            </geometry>
+            <material name="white" />
+        </visual>
+    </link>
+
+    <!-- rot_cen to motor_0 -->
+    <joint name="joint_rot_cen_motor_0" type="floating">
+        <parent link="srb_rot_cen"/>
+        <child link="srb_motor_0"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+
+    <!-- motor_1 -->
+    <link name="srb_motor_1">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://cga_ik/meshes/arc_link_thin.stl" 
+                    scale="${ sqrt(r_b * r_b  + r_c * r_c) } 
+                           ${ sqrt(r_b * r_b  + r_c * r_c) } 
+                           ${ sqrt(r_b * r_b  + r_c * r_c) }"/>
+            </geometry>
+            <material name="white" />
+        </visual>
+    </link>
+
+    <!-- rot_cen to motor_1 -->
+    <joint name="joint_rot_cen_motor_1" type="floating">
+        <parent link="srb_rot_cen"/>
+        <child link="srb_motor_1"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+
+    <!-- motor_2 -->
+    <link name="srb_motor_2">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://cga_ik/meshes/arc_link_thin.stl" 
+                    scale="${ sqrt(r_b * r_b  + r_c * r_c) } 
+                           ${ sqrt(r_b * r_b  + r_c * r_c) } 
+                           ${ sqrt(r_b * r_b  + r_c * r_c) }"/>
+            </geometry>
+            <material name="white" />
+        </visual>
+    </link>
+
+    <!-- rot_cen to motor_2 -->
+    <joint name="joint_rot_cen_motor_2" type="floating">
+        <parent link="srb_rot_cen"/>
+        <child link="srb_motor_2"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+
+    <!-- elbow_0 -->
+    <link name="srb_elbow_0">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://cga_ik/meshes/arc_link_thin.stl" 
+                    scale="${ sqrt(r_b * r_b  + r_c * r_c) } 
+                           ${ sqrt(r_b * r_b  + r_c * r_c) } 
+                           ${ sqrt(r_b * r_b  + r_c * r_c) }"/>
+            </geometry>
+            <material name="white" />
+        </visual>
+    </link>
+
+    <!-- rot_cen to elbow_0 -->
+    <joint name="joint_rot_cen_elbow_0" type="floating">
+        <parent link="srb_rot_cen"/>
+        <child link="srb_elbow_0"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+
+    <!-- elbow_1 -->
+    <link name="srb_elbow_1">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://cga_ik/meshes/arc_link_thin.stl" 
+                    scale="${ sqrt(r_b * r_b  + r_c * r_c) } 
+                           ${ sqrt(r_b * r_b  + r_c * r_c) } 
+                           ${ sqrt(r_b * r_b  + r_c * r_c) }"/>
+            </geometry>
+            <material name="white" />
+        </visual>
+    </link>
+
+    <!-- rot_cen to elbow_1 -->
+    <joint name="joint_rot_cen_elbow_1" type="floating">
+        <parent link="srb_rot_cen"/>
+        <child link="srb_elbow_1"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+
+    <!-- elbow_2 -->
+    <link name="srb_elbow_2">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://cga_ik/meshes/arc_link_thin.stl" 
+                    scale="${ sqrt(r_b * r_b  + r_c * r_c) } 
+                           ${ sqrt(r_b * r_b  + r_c * r_c) } 
+                           ${ sqrt(r_b * r_b  + r_c * r_c) }"/>
+            </geometry>
+            <material name="white" />
+        </visual>
+    </link>
+
+    <!-- rot_cen to elbow_2 -->
+    <joint name="joint_rot_cen_elbow_2" type="floating">
+        <parent link="srb_rot_cen"/>
+        <child link="srb_elbow_2"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+
+    <!-- epl_c -->
+    <link name="srb_epl_c">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://cga_ik/meshes/end_plate.stl" 
+                      scale="${r_e} 
+                             ${r_e} 
+                             ${r_e}"/>
+            </geometry>
+            <material name="white" />
+        </visual>
+    </link>
+
+    <!-- rot_cen to epl_c -->
+    <joint name="joint_rot_cen_epl_c" type="floating">
+        <parent link="srb_rot_cen"/>
+        <child link="srb_epl_c"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
     
-    <link name="motor_0">
-        <visual>
-            <origin xyz="0 0 0" rpy="0 0 0"/>
-            <geometry>
-            <mesh filename="package://cga_ik/meshes/arc_link_thin.stl" 
-                  scale="${ sqrt(r_b * r_b  + r_c * r_c) } 
-                         ${ sqrt(r_b * r_b  + r_c * r_c) } 
-                         ${ sqrt(r_b * r_b  + r_c * r_c) }"/>
-            </geometry>
-            <material name="white" />
-        </visual>
-    </link>
-
-
-    <!-- rot_cen to motor 1 -->
-    <joint name="joint_1" type="revolute">
-        <parent link="rot_cen"/>
-        <child link="motor_1"/>
-
-        <origin xyz="-0.25 0.433013 -0.1665" rpy="-1.24935 -1.66282e-09 -2.61799"/>
-        <axis xyz="0 0 1"/>
-
-        <limit lower="0" upper="${pi/2}" velocity="100" effort="100"/> 
-    </joint>
-
-    <link name="motor_1">
-        <visual>
-            <origin xyz="0 0 0" rpy="0 0 0"/>
-            <geometry>
-            <mesh filename="package://cga_ik/meshes/arc_link_thin.stl" 
-                  scale="${ sqrt(r_b * r_b  + r_c * r_c) } 
-                         ${ sqrt(r_b * r_b  + r_c * r_c) } 
-                         ${ sqrt(r_b * r_b  + r_c * r_c) }"/>
-            </geometry>
-            <material name="white" />
-        </visual>
-    </link>
-
-
-    <!-- rot_cen to motor 2 -->
-    <joint name="joint_2" type="revolute">
-        <parent link="rot_cen"/>
-        <child link="motor_2"/>
-
-        <origin xyz="-0.25 -0.433013 -0.1665" rpy="-1.24935 -6.45836e-08 -0.523599"/>
-        <axis xyz="0 0 1"/>
-
-        <limit lower="0" upper="${pi/2}" velocity="100" effort="100"/> 
-    </joint>
-
-    <link name="motor_2">
-        <visual>
-            <origin xyz="0 0 0" rpy="0 0 0"/>
-            <geometry>
-            <mesh filename="package://cga_ik/meshes/arc_link_thin.stl" 
-                  scale="${ sqrt(r_b * r_b  + r_c * r_c) } 
-                         ${ sqrt(r_b * r_b  + r_c * r_c) } 
-                         ${ sqrt(r_b * r_b  + r_c * r_c) }"/>
-            </geometry>
-            <material name="white" />
-        </visual>
-    </link>
 
 </robot>
