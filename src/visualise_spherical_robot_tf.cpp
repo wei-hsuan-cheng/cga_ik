@@ -340,8 +340,8 @@ private:
         float th = (0.25 * M_PI) * std::sin(2.0 * M_PI * freq * t_);
         // float th = 0.0;
 
-        // Vector4d axis_ang(0.0, 0.0, 1.0, (double) th);
-        Vector4d axis_ang(0.0, 1.0, 0.0, (double) th);
+        Vector4d axis_ang(0.0, 0.0, 1.0, (double) th);
+        // Vector4d axis_ang(0.0, 1.0, 0.0, (double) th);
         // Vector4d axis_ang(1.0, 0.0, 0.0, (double) th);
 
         Vector3d so3 = (axis_ang.head(3)).normalized() * axis_ang(3);
