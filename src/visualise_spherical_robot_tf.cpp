@@ -196,13 +196,13 @@ private:
     }
 
     void publishSphereMarker(
-        rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
-        int marker_id,
+        const rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr &pub,
+        const int &marker_id,
         const std::string &ns,
         const std::string &frame_id,
-        float radius,
+        const float &radius,
         const Vector3f &centre,
-        Vector4f rgba_color)
+        const Vector4f &rgba_color)
     {
         visualization_msgs::msg::Marker sphere_marker;
         // sphere_marker.header.stamp = this->now();
@@ -231,14 +231,14 @@ private:
     }
 
     void publishTriMarker(
-        rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
-        int marker_id,
+        const rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr &pub,
+        const int &marker_id,
         const std::string &ns,
         const std::string &frame_id,
         const Vector3f &p0,
         const Vector3f &p1,
         const Vector3f &p2,
-        Vector4f rgba_color)
+        const Vector4f &rgba_color)
     {
         // Build a TRIANGLE_LIST marker from the 3 points
         visualization_msgs::msg::Marker tri_marker;
@@ -380,7 +380,7 @@ private:
     {
         // Poses w.r.t. the rotation centre
         // Rotation centre
-        publishTF(ik_result_.rot_cen, ik_result_.quat_rot_cen, "srb_rot_cen", "srb_base");
+        publishTF(ik_result_.pos_base_rot_cen, ik_result_.quat_base_rot_cen, "srb_rot_cen", "srb_base");
 
         // Motors of the robot
         publishTF(ik_result_.pos_rot_cen_m_0, ik_result_.quat_rot_cen_m_0, "srb_motor_0", "srb_rot_cen");
