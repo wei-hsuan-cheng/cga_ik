@@ -41,15 +41,16 @@ public:
     // Publishers
     joint_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
     angles_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/spherical_robot/joint_states", 10);
-
-    srb_outer_sphere_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_outer_sphere", 10);
-
-    srb_ltri_0_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ltri_0", 10);
-    srb_ltri_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ltri_1", 10);
-    srb_ltri_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ltri_2", 10);
-    srb_utri_0_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_utri_0", 10);
-    srb_utri_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_utri_1", 10);
-    srb_utri_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_utri_2", 10);
+    
+    auto qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable();
+    srb_outer_sphere_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_outer_sphere", qos);
+    srb_ltri_0_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ltri_0", qos);
+    srb_ltri_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ltri_1", qos);
+    srb_ltri_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ltri_2", qos);
+    srb_utri_0_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_utri_0", qos);
+    srb_utri_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_utri_1", qos);
+    srb_utri_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_utri_2", qos);
+    light_ray_marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/srb_light_ray", qos);
 
     RCLCPP_INFO(this->get_logger(), "visualise_spherical_robot_tf node started.");
 
@@ -74,9 +75,13 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_utri_1_pub_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_utri_2_pub_;
 
+    // Publisher for the light ray marker
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr light_ray_marker_pub_;
+
     double fs_, Ts_;
     int k_;
     double t_;
+    rclcpp::Time current_time_;
 
     Quaternionf quat_cmd_;
 
@@ -86,16 +91,17 @@ private:
 
     Vector4f outer_sphere_color_;
     std::vector<Vector3f> linkArcPts_;
-    Vector4f utri_color_, ltri_color_, link_color_, plate_color_;
-    float link_thickness_, plate_thickness_;
-    
+    Vector4f utri_color_, ltri_color_, light_ray_color_;
+    float plate_thickness_;    
+
 
     void initTimeSpec()
     {
-        fs_ = 30.0;
+        fs_ = 60.0;
         Ts_ = 1.0 / fs_;
         k_ = 0;
         t_ = 0.0;
+        current_time_ = this->now();
     }
 
     void initSRBIK()
@@ -137,6 +143,7 @@ private:
                                                                      rot_cen_, 
                                                                      s_0_, s_1_, 
                                                                      Quaternionf::Identity());
+
         
         // Print initial poses of each component
         // Motor positions and orientations
@@ -159,12 +166,21 @@ private:
         utri_color_ = Vector4f(0.0f, 0.0f, 1.0f, 0.8f);
         ltri_color_ = Vector4f(0.0f, 1.0f, 0.0f, 0.8f);
 
+        // Light ray marker
+        light_ray_color_ = Vector4f(0.0f, 0.0f, 1.0f, 0.7f);
+
     }
 
-    void publishTF(const Vector3f &p, const Quaternionf &q, const std::string &child, const std::string &parent)
+    void publishTF(
+        const Vector3f &p, 
+        const Quaternionf &q, 
+        const std::string &child, 
+        const std::string &parent)
     {
         geometry_msgs::msg::TransformStamped tf;
-        tf.header.stamp = this->now();
+        // tf.header.stamp = this->now();
+        tf.header.stamp = current_time_;
+
         tf.header.frame_id = parent;
         tf.child_frame_id = child;
         tf.transform.translation.x = p.x();
@@ -178,7 +194,7 @@ private:
         tf.transform.rotation.z = q.z();
 
         tf_broadcaster_->sendTransform(tf);
-    };
+    }
 
     void publishSphereMarker(
         rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
@@ -190,7 +206,9 @@ private:
         Vector4f rgba_color)
     {
         visualization_msgs::msg::Marker sphere_marker;
-        sphere_marker.header.stamp = this->now();
+        // sphere_marker.header.stamp = this->now();
+        // sphere_marker.header.stamp = current_time_;
+
         sphere_marker.header.frame_id = frame_id;
         sphere_marker.ns = ns;
         sphere_marker.id = marker_id;
@@ -221,12 +239,13 @@ private:
         const Vector3f &p0,
         const Vector3f &p1,
         const Vector3f &p2,
-        float thickness,
         Vector4f rgba_color)
     {
         // Build a TRIANGLE_LIST marker from the 3 points
         visualization_msgs::msg::Marker tri_marker;
-        tri_marker.header.stamp = this->now();
+        // tri_marker.header.stamp = this->now();
+        // tri_marker.header.stamp = current_time_;
+
         tri_marker.header.frame_id = frame_id;
         tri_marker.ns = ns;
         tri_marker.id = marker_id;
@@ -264,6 +283,53 @@ private:
         pub->publish(tri_marker);
     }
 
+    void publishLightRayMarker(
+        const rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr &pub,
+        const int &marker_id,
+        const std::string &ns,
+        const std::string &frame_id,
+        const Vector3f &starting_point,
+        const Vector3f &ending_point,
+        const Vector4f &rgba_color)
+    {
+        visualization_msgs::msg::Marker light_ray_marker;
+        // light_ray_marker.header.stamp = this->now();
+        // light_ray_marker.header.stamp = current_time_;
+
+        light_ray_marker.header.frame_id = frame_id;
+        light_ray_marker.ns = ns;
+        light_ray_marker.id = marker_id;
+        light_ray_marker.type = visualization_msgs::msg::Marker::ARROW;
+        light_ray_marker.action = visualization_msgs::msg::Marker::ADD;
+
+        light_ray_marker.scale.x = 0.001;  // Shaft diameter
+        light_ray_marker.scale.y = 0.002;  // Head diameter
+        light_ray_marker.scale.z = 0.02;  // Head length
+
+        // Set the marker color to blue for z-axis
+        light_ray_marker.color.r = rgba_color(0);
+        light_ray_marker.color.g = rgba_color(1);
+        light_ray_marker.color.b = rgba_color(2);
+        light_ray_marker.color.a = rgba_color(3);
+
+        // Set the arrow origin point and direction
+        geometry_msgs::msg::Point pt_s;
+        pt_s.x = starting_point(0);
+        pt_s.y = starting_point(1);
+        pt_s.z = starting_point(2);
+
+        geometry_msgs::msg::Point pt_e;
+        pt_e.x = ending_point(0);
+        pt_e.y = ending_point(1);
+        pt_e.z = ending_point(2); // Length of the arrow
+
+        light_ray_marker.points.push_back(pt_s);
+        light_ray_marker.points.push_back(pt_e);
+
+        pub->publish(light_ray_marker);
+    }
+
+
     void getTargetPose()
     {
         // Update time
@@ -271,12 +337,12 @@ private:
         t_ = k_ * Ts_;
 
         // Target orientation for the IK problem
-        float freq = 0.1;  // [cycles/callback]
+        float freq = 0.1;
         float th = (0.25 * M_PI) * std::sin(2.0 * M_PI * freq * t_);
         // float th = 0.0;
 
-        Vector4d axis_ang(0.0, 0.0, 1.0, (double) th);
-        // Vector4d axis_ang(0.0, 1.0, 0.0, (double) th);
+        // Vector4d axis_ang(0.0, 0.0, 1.0, (double) th);
+        Vector4d axis_ang(0.0, 1.0, 0.0, (double) th);
         // Vector4d axis_ang(1.0, 0.0, 0.0, (double) th);
 
         Vector3d so3 = (axis_ang.head(3)).normalized() * axis_ang(3);
@@ -298,7 +364,9 @@ private:
     {
         // Publish the joint states for these angles
         sensor_msgs::msg::JointState js_msg;
-        js_msg.header.stamp = this->now();
+        // js_msg.header.stamp = this->now();
+        js_msg.header.stamp = current_time_;
+
         js_msg.name = {"joint_0", "joint_1", "joint_2"};
         js_msg.position = {ik_result_.th_0, ik_result_.th_1, ik_result_.th_2};
         joint_pub_->publish(js_msg);
@@ -311,7 +379,6 @@ private:
 
     void publishAllTransforms()
     {
-        
         // Poses w.r.t. the rotation centre
         // Rotation centre
         publishTF(ik_result_.rot_cen, ik_result_.quat_rot_cen, "srb_rot_cen", "srb_base");
@@ -365,7 +432,6 @@ private:
                          Vector3f::Zero(), // at rot_cen
                          ik_result_.pos_rot_cen_elb_0,
                          ik_result_.pos_rot_cen_m_0,
-                         plate_thickness_,
                          ltri_color_
                         );
         
@@ -377,7 +443,6 @@ private:
                          Vector3f::Zero(), // at rot_cen
                          ik_result_.pos_rot_cen_elb_1,
                          ik_result_.pos_rot_cen_m_1,
-                         plate_thickness_,
                          ltri_color_
                         );
         
@@ -389,7 +454,6 @@ private:
                          Vector3f::Zero(), // at rot_cen
                          ik_result_.pos_rot_cen_elb_2,
                          ik_result_.pos_rot_cen_m_2,
-                         plate_thickness_,
                          ltri_color_
                         );
 
@@ -402,7 +466,6 @@ private:
                          Vector3f::Zero(), // at rot_cen
                          ik_result_.pos_rot_cen_elb_0,
                          ik_result_.pos_rot_cen_epl_0,
-                         plate_thickness_,
                          utri_color_
                         );
         
@@ -414,7 +477,6 @@ private:
                          Vector3f::Zero(), // at rot_cen
                          ik_result_.pos_rot_cen_elb_1,
                          ik_result_.pos_rot_cen_epl_1,
-                         plate_thickness_,
                          utri_color_
                         );
         
@@ -426,10 +488,19 @@ private:
                          Vector3f::Zero(), // at rot_cen
                          ik_result_.pos_rot_cen_elb_2,
                          ik_result_.pos_rot_cen_epl_2,
-                         plate_thickness_,
                          utri_color_
                         );
 
+        // Publish light ray marker
+        publishLightRayMarker(
+                              light_ray_marker_pub_,
+                              0,                // marker_id
+                              "srb_light_ray",         // ns
+                              "srb_ept",       // frame_id
+                              Vector3f::Zero(), // at rot_cen
+                              Vector3f(0.0, 0.0, ik_result_.r_s), // at srb_ept
+                              light_ray_color_
+                            );
 
 
     }
@@ -447,7 +518,6 @@ private:
 
     void visualise_spherical_robot_tf_callback_()
     {
-        
         auto start = std::chrono::steady_clock::now();
 
         // Get IK target pose (orientation)
@@ -458,9 +528,10 @@ private:
         auto end = std::chrono::steady_clock::now();
         double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
         double frequency = (elapsed_ms > 0.0) ? 1000.0 / elapsed_ms : 0.0;
-        RCLCPP_INFO(this->get_logger(), "Ts = %.2f [ms], fs = %.2f [Hz]", elapsed_ms, frequency);
+        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "Ts = %.2f [ms], fs = %.2f [Hz]", elapsed_ms, frequency);
 
 
+        current_time_ = this->now();
         // Publish IK solution:
         publishIKSolution();
         // Publish all TF frames:
