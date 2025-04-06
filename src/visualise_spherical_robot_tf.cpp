@@ -168,7 +168,6 @@ private:
 
         // Light ray marker
         light_ray_color_ = Vector4f(0.0f, 0.0f, 1.0f, 0.7f);
-
     }
 
     void publishTF(
