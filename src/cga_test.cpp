@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cmath>
 #include <rclcpp/rclcpp.hpp>
-#include "cga_ik/cga_utils.hpp"
+#include "cga/cga_utils.hpp"
 #include "robot_math_utils/robot_math_utils_v1_9.hpp"
 
 using RM = RMUtils;

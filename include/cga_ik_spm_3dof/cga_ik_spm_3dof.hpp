@@ -5,7 +5,7 @@
 #define CGA_IK_SPHERICAL_ROBOT_HPP
 
 #include <Eigen/Dense>
-#include "cga_ik/cga_utils.hpp"
+#include "cga/cga_utils.hpp"
 #include "robot_math_utils/robot_math_utils_v1_9.hpp"
 
 using Eigen::Quaternionf;

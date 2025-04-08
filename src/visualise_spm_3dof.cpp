@@ -9,17 +9,17 @@
 #include <chrono>
 #include <memory>
 
-#include "cga_ik/cga_utils.hpp"
+#include "cga/cga_utils.hpp"
 #include "cga_ik_spm_3dof/cga_ik_spm_3dof.hpp"
 #include "robot_math_utils/robot_math_utils_v1_9.hpp"
 
 using RM = RMUtils;
 
-class VisualiseSPM3DoFTF : public rclcpp::Node
+class VisualiseSPM3DoF : public rclcpp::Node
 {
 public:
-  VisualiseSPM3DoFTF()
-  : Node("visualise_spm_3dof_tf")
+  VisualiseSPM3DoF()
+  : Node("visualise_spm_3dof")
   {
     // Initialise time spec
     initTimeSpec();
@@ -35,7 +35,7 @@ public:
     // Timer
     timer_ = this->create_wall_timer(
       std::chrono::milliseconds(static_cast<int>(Ts_ * 1000)),
-      std::bind(&VisualiseSPM3DoFTF::visualise_spm_3dof_tf_callback_, this)
+      std::bind(&VisualiseSPM3DoF::visualise_spm_3dof_callback_, this)
     );
 
     // Publishers
@@ -52,7 +52,7 @@ public:
     spm_utri_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_utri_2", qos);
     light_ray_marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/spm_light_ray", qos);
 
-    RCLCPP_INFO(this->get_logger(), "visualise_spm_3dof_tf node started.");
+    RCLCPP_INFO(this->get_logger(), "visualise_spm_3dof node started.");
 
   }
 
@@ -515,7 +515,7 @@ private:
 
     }
 
-    void visualise_spm_3dof_tf_callback_()
+    void visualise_spm_3dof_callback_()
     {
         auto start = std::chrono::steady_clock::now();
 
@@ -548,7 +548,7 @@ private:
 int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<VisualiseSPM3DoFTF>();
+  auto node = std::make_shared<VisualiseSPM3DoF>();
   rclcpp::spin(node);
   rclcpp::shutdown();
   return 0;

@@ -41,29 +41,25 @@ include_directories(
 
 # Source files
 set(CGA_TEST_TEST_SOURCES src/cga_test.cpp)
-set(CGA_IK_VALIDATION_SOURCES src/cga_ik_validate.cpp)
-set(VISUALISE_ROBOT_TF_SOURCES src/visualise_robot_tf.cpp)
-set(VISUALISE_SPHERICAL_ROBOT_TF_SOURCES src/visualise_spm_3dof_tf.cpp)
+set(VISUALISE_COBOT_6DOF_SOURCES src/visualise_cobot_6dof.cpp)
+set(VISUALISE_SPM_3DOF_SOURCES src/visualise_spm_3dof.cpp)
 
 # Add executables
 add_executable(cga_test ${CGA_TEST_TEST_SOURCES})
-add_executable(cga_ik_validate ${CGA_IK_VALIDATION_SOURCES})
-add_executable(visualise_robot_tf ${VISUALISE_ROBOT_TF_SOURCES})
-add_executable(visualise_spm_3dof_tf ${VISUALISE_SPHERICAL_ROBOT_TF_SOURCES})
+add_executable(visualise_cobot_6dof ${VISUALISE_COBOT_6DOF_SOURCES})
+add_executable(visualise_spm_3dof ${VISUALISE_SPM_3DOF_SOURCES})
 
 
 # Link libraries
 ament_target_dependencies(cga_test ${dependencies})
-ament_target_dependencies(cga_ik_validate ${dependencies})
-ament_target_dependencies(visualise_robot_tf ${dependencies})
-ament_target_dependencies(visualise_spm_3dof_tf ${dependencies})
+ament_target_dependencies(visualise_cobot_6dof ${dependencies})
+ament_target_dependencies(visualise_spm_3dof ${dependencies})
 
 # Install targets
 install(TARGETS
   cga_test
-  cga_ik_validate
-  visualise_robot_tf
-  visualise_spm_3dof_tf
+  visualise_cobot_6dof
+  visualise_spm_3dof
   
   DESTINATION lib/${PROJECT_NAME}
 )

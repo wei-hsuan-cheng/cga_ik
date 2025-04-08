@@ -1,7 +1,7 @@
 #ifndef CGA_UTILS_HPP
 #define CGA_UTILS_HPP
 
-#include "cga_ik/cga.hpp"
+#include "cga/cga.hpp"
 #include <Eigen/Dense>
 #include <iostream>
 

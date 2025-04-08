@@ -11,28 +11,28 @@
 #include <memory>
 
 #include "robot_math_utils/robot_math_utils_v1_9.hpp"
-#include "cga_ik/cga_ik.hpp"
+#include "cga_ik_cobot_6dof/cga_ik_cobot_6dof.hpp"
 
 using namespace std::chrono_literals;
 using RM = RMUtils;
 
-class VisualiseRobotTF : public rclcpp::Node
+class VisualiseCobot6DoF : public rclcpp::Node
 {
 public:
-  VisualiseRobotTF()
-  : Node("visualise_robot_tf"), t_(0.0), dh_table_(cga_ik::loadDHTable())
+  VisualiseCobot6DoF()
+  : Node("visualise_cobot_6dof"), t_(0.0), dh_table_(cga_ik::loadDHTable())
   {
     tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
     timer_ = this->create_wall_timer(
       std::chrono::milliseconds(static_cast<int>(Ts_ * 1000)),
-      std::bind(&VisualiseRobotTF::visualise_robot_tf_callback_, this)
+      std::bind(&VisualiseCobot6DoF::visualise_cobot_6dof_callback_, this)
     );
 
     quat_sub_ = this->create_subscription<geometry_msgs::msg::Quaternion>(
       "/mpu6050_imu/quat", 10,
-      std::bind(&VisualiseRobotTF::quat_callback_, this, std::placeholders::_1));
+      std::bind(&VisualiseCobot6DoF::quat_callback_, this, std::placeholders::_1));
 
-    cga_ik_joint_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/visualise_robot_tf/joint_states", 10);
+    cga_ik_joint_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/visualise_cobot_6dof/joint_states", 10);
     joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
     
     // Initialization
@@ -104,7 +104,7 @@ private:
     pos_quat_f_tcp_ = PosQuat(Vector3d(translation[0], translation[1], translation[2]), 
                               RM::Quatz(rotation_z));
 
-    std::cout << "[VisualiseRobotTF] Loaded params from yaml file" << std::endl;
+    std::cout << "[VisualiseCobot6DoF] Loaded params from yaml file" << std::endl;
     std::cout << "pos_quat_f_tcp_: " << pos_quat_f_tcp_.pos.transpose() << ", " << pos_quat_f_tcp_.quat.w() << ", " << pos_quat_f_tcp_.quat.x() << ", " << pos_quat_f_tcp_.quat.y() << ", " << pos_quat_f_tcp_.quat.z() << std::endl;
   }
 
@@ -268,7 +268,7 @@ private:
     tf_msg.header.frame_id = "world";
     tf_msg.child_frame_id = "cga_ik_base";
     tf_msg.transform.translation.x = 0.0;
-    tf_msg.transform.translation.y = -0.5;
+    tf_msg.transform.translation.y = -1.0;
     tf_msg.transform.translation.z = 0.0;
     tf_msg.transform.rotation.w = 1.0;
     tf_msg.transform.rotation.x = 0.0;
@@ -317,7 +317,7 @@ private:
   }
   
   // Timer callback runs at ~30 Hz.
-  void visualise_robot_tf_callback_()
+  void visualise_cobot_6dof_callback_()
   {
     auto start = std::chrono::steady_clock::now();
 
@@ -343,7 +343,7 @@ private:
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<VisualiseRobotTF>();
+  auto node = std::make_shared<VisualiseCobot6DoF>();
   rclcpp::spin(node);
   rclcpp::shutdown();
   return 0;

@@ -62,17 +62,17 @@ def generate_launch_description():
         parameters=[robot_description],
     )
 
-    visualise_spm_3dof_tf_node = Node(
+    visualise_spm_3dof_node = Node(
         package="cga_ik",
-        executable="visualise_spm_3dof_tf",
-        name="visualise_spm_3dof_tf",
+        executable="visualise_spm_3dof",
+        name="visualise_spm_3dof",
         output="screen",
         parameters=[geometric_params],
     )
 
     nodes_to_start = [
                       robot_state_publisher_node,
-                      visualise_spm_3dof_tf_node,       
+                      visualise_spm_3dof_node,       
                       ]
 
     return LaunchDescription(nodes_to_start)

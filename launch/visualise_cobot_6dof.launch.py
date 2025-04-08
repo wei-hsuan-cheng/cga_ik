@@ -49,10 +49,10 @@ def generate_launch_description():
         ],
     )
     
-    visualise_robot_tf_node = Node(
+    visualise_cobot_6dof_node = Node(
         package="cga_ik",
-        executable="visualise_robot_tf",
-        name="visualise_robot_tf",
+        executable="visualise_cobot_6dof",
+        name="visualise_cobot_6dof",
         output="screen",
         parameters=[pose_f_tcp_params],
     )
@@ -61,7 +61,7 @@ def generate_launch_description():
 
     nodes_to_start = [
                       robot_state_publisher_node,
-                      visualise_robot_tf_node,       
+                      visualise_cobot_6dof_node,       
                       ]
 
     return LaunchDescription(nodes_to_start)
