@@ -20,8 +20,16 @@ class VisualiseCobot6DoF : public rclcpp::Node
 {
 public:
   VisualiseCobot6DoF()
-  : Node("visualise_cobot_6dof"), t_(0.0), dh_table_(cga_ik::loadDHTable())
+  : Node("visualise_cobot_6dof"), dh_table_(cga_ik::loadDHTable())
   {
+    // Initialisation
+    updateDHTable();
+    updateTimeSpecParams();
+    updateControlParams();
+    updateTCPParams();
+    updateIKParams();
+
+
     tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
     timer_ = this->create_wall_timer(
       std::chrono::milliseconds(static_cast<int>(Ts_ * 1000)),
@@ -35,11 +43,7 @@ public:
     cga_ik_joint_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/visualise_cobot_6dof/joint_states", 10);
     joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
     
-    // Initialization
-    updateSamplingParams();
-    updateControlParams();
-    updateTCPParams();
-    updateIKParams();
+    
   }
 
 private:
@@ -51,6 +55,7 @@ private:
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
 
   // Sampling rate and period
+  double t_;
   float fs_, Ts_;
 
   // Controller params
@@ -62,7 +67,7 @@ private:
   cga_ik::CGAIKRobotConfig robot_config_;
   Vector6d joint_angles_;
   Vector6d resulting_pose_;
-  double t_;
+  
 
   // TCP parameters
   PosQuat pos_quat_f_tcp_;
@@ -78,8 +83,16 @@ private:
     // std::cout << "quat_cmd_ = " << quat_cmd_.w() << ", " << quat_cmd_.x() << ", " << quat_cmd_.y() << ", " << quat_cmd_.z() << std::endl;
   }
 
-  void updateSamplingParams() 
+  void updateDHTable()
   {
+    // dh_table_ = cga_ik::loadDHTable();
+    std::cout << "\n----- D-H table (alpha_{i-1}, a_{i-1}, d_{i}, theta_{i}) -----" << std::endl;
+    std::cout << dh_table_ << std::endl;
+  }
+  
+  void updateTimeSpecParams() 
+  {
+    t_ = 0.0;
     fs_ = 60.0;
     Ts_ = 1.0 / fs_;
   }
