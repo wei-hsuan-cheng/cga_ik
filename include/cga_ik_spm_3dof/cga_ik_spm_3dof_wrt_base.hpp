@@ -27,7 +27,7 @@ using cga_utils::down;
 using cga_utils::Grade;
 using RM = RMUtils;
 
-namespace cga_ik_spherical_robot {
+namespace cga_ik_spm_3dof {
 
 // Helper: compute the outer sphere radius
 float computeOuterSphereRadius(const CGA &m, const CGA &rc)
@@ -47,7 +47,7 @@ CGA constructSphere(const float &r_s, const CGA &rc, const int &grade)
         case 4:
             return !s;
         default:
-            throw std::invalid_argument("[cga_ik_spherical_robot::constructSphere() ERROR] Invalid grade for CGA sphere construction");
+            throw std::invalid_argument("[cga_ik_spm_3dof::constructSphere() ERROR] Invalid grade for CGA sphere construction");
     }
     
 }
@@ -171,7 +171,7 @@ float computeRelativeZAngle(const Quaternionf & quat_0_1, const Quaternionf & qu
 
 
 // This struct holds the final output of the single-orientation IK.
-struct SphericalRobotIKResult {
+struct SPM3DoFIKResult {
     float r_b, r_e;
     float r_s, d;
     
@@ -194,7 +194,7 @@ struct SphericalRobotIKResult {
 
 
 // Main function: compute IK solution of the 3-DoF spherical robot.
-inline SphericalRobotIKResult computeSphericalRobotIK(
+inline SPM3DoFIKResult computeSPM3DoFIK(
     // geometry parameters
     const float &r_b, const float &r_e,
     // Principal axis of the 3-DoF spherical robot
@@ -321,7 +321,7 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
 
 
     // Assemble results:
-    SphericalRobotIKResult result;
+    SPM3DoFIKResult result;
 
     // Spherical robot geometry parameters
     result.r_b = r_b;
@@ -371,6 +371,6 @@ inline SphericalRobotIKResult computeSphericalRobotIK(
     return result;
 }
 
-} // namespace cga_ik_spherical_robot
+} // namespace cga_ik_spm_3dof
 
 #endif // CGA_IK_SPHERICAL_ROBOT_HPP

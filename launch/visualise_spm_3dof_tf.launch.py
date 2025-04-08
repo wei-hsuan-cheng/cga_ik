@@ -12,12 +12,12 @@ def load_yaml_file_absolute_path(yaml_file):
         return yaml.safe_load(file)
 
 def generate_launch_description():
-    spherical_robot_params = os.path.join(
+    spm_3dof_params = os.path.join(
         get_package_share_directory("cga_ik"),
         "config",
-        "spherical_robot_params.yaml"
+        "spm_3dof_params.yaml"
     )
-    geometric_params = load_yaml_file_absolute_path(spherical_robot_params).get("geometric_params", {})
+    geometric_params = load_yaml_file_absolute_path(spm_3dof_params).get("geometric_params", {})
 
     r_b_str = str(geometric_params.get("r_b", 0.5))
     ratio_c_b_str = str(geometric_params.get("ratio_c_b", 0.3))
@@ -26,7 +26,7 @@ def generate_launch_description():
     urdf_xacro_path = os.path.join(
         get_package_share_directory("cga_ik"),
         "config",
-        "spherical_robot.urdf.xacro"
+        "spm_3dof.urdf.xacro"
     )
     if not os.path.exists(urdf_xacro_path):
         raise FileNotFoundError(f"URDF file not found at {urdf_xacro_path}")
@@ -62,17 +62,17 @@ def generate_launch_description():
         parameters=[robot_description],
     )
 
-    visualise_spherical_robot_tf_node = Node(
+    visualise_spm_3dof_tf_node = Node(
         package="cga_ik",
-        executable="visualise_spherical_robot_tf",
-        name="visualise_spherical_robot_tf",
+        executable="visualise_spm_3dof_tf",
+        name="visualise_spm_3dof_tf",
         output="screen",
         parameters=[geometric_params],
     )
 
     nodes_to_start = [
                       robot_state_publisher_node,
-                      visualise_spherical_robot_tf_node,       
+                      visualise_spm_3dof_tf_node,       
                       ]
 
     return LaunchDescription(nodes_to_start)

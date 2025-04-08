@@ -10,21 +10,21 @@
 #include <memory>
 
 #include "cga_ik/cga_utils.hpp"
-#include "cga_ik_spherical_robot/cga_ik_spherical_robot.hpp"
+#include "cga_ik_spm_3dof/cga_ik_spm_3dof.hpp"
 #include "robot_math_utils/robot_math_utils_v1_9.hpp"
 
 using RM = RMUtils;
 
-class VisualiseSphericalRobotTF : public rclcpp::Node
+class VisualiseSPM3DoFTF : public rclcpp::Node
 {
 public:
-  VisualiseSphericalRobotTF()
-  : Node("visualise_spherical_robot_tf")
+  VisualiseSPM3DoFTF()
+  : Node("visualise_spm_3dof_tf")
   {
     // Initialise time spec
     initTimeSpec();
-    // Initialise CGA IK for spherical robot
-    initSRBIK();
+    // Initialise CGA IK for spm
+    initSPMIK();
     // Initialise robot visuals
     initRobotVisual();
 
@@ -35,24 +35,24 @@ public:
     // Timer
     timer_ = this->create_wall_timer(
       std::chrono::milliseconds(static_cast<int>(Ts_ * 1000)),
-      std::bind(&VisualiseSphericalRobotTF::visualise_spherical_robot_tf_callback_, this)
+      std::bind(&VisualiseSPM3DoFTF::visualise_spm_3dof_tf_callback_, this)
     );
 
     // Publishers
     joint_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
-    angles_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/spherical_robot/joint_states", 10);
+    angles_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/spm_3dof/joint_states", 10);
     
     auto qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable();
-    srb_outer_sphere_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_outer_sphere", qos);
-    srb_ltri_0_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ltri_0", qos);
-    srb_ltri_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ltri_1", qos);
-    srb_ltri_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_ltri_2", qos);
-    srb_utri_0_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_utri_0", qos);
-    srb_utri_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_utri_1", qos);
-    srb_utri_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/markers/srb_utri_2", qos);
-    light_ray_marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spherical_robot/srb_light_ray", qos);
+    spm_outer_sphere_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_outer_sphere", qos);
+    spm_ltri_0_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_ltri_0", qos);
+    spm_ltri_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_ltri_1", qos);
+    spm_ltri_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_ltri_2", qos);
+    spm_utri_0_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_utri_0", qos);
+    spm_utri_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_utri_1", qos);
+    spm_utri_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_utri_2", qos);
+    light_ray_marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/spm_light_ray", qos);
 
-    RCLCPP_INFO(this->get_logger(), "visualise_spherical_robot_tf node started.");
+    RCLCPP_INFO(this->get_logger(), "visualise_spm_3dof_tf node started.");
 
   }
 
@@ -65,15 +65,15 @@ private:
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr angles_pub_;
 
     // Publisher for the sphere marker
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_outer_sphere_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spm_outer_sphere_pub_;
 
     // Publisher for the triangle marker
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_ltri_0_pub_;
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_ltri_1_pub_;
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_ltri_2_pub_;
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_utri_0_pub_;
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_utri_1_pub_;
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr srb_utri_2_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spm_ltri_0_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spm_ltri_1_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spm_ltri_2_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spm_utri_0_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spm_utri_1_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spm_utri_2_pub_;
 
     // Publisher for the light ray marker
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr light_ray_marker_pub_;
@@ -87,7 +87,7 @@ private:
 
     float r_b_, ratio_c_b_, r_c_, ratio_e_b_, r_e_;
     CGA e_principal_, rot_cen_, s_0_, s_1_;
-    cga_ik_spherical_robot::SphericalRobotIKResult ik_result_;
+    cga_ik_spm_3dof::SPM3DoFIKResult ik_result_;
 
     Vector4f outer_sphere_color_;
     std::vector<Vector3f> linkArcPts_;
@@ -104,7 +104,7 @@ private:
         current_time_ = this->now();
     }
 
-    void initSRBIK()
+    void initSPMIK()
     {
         // IK target pose (quaternion orientation)
         quat_cmd_ = Quaternionf::Identity();
@@ -126,7 +126,7 @@ private:
         r_e_ = ratio_e_b_ * r_b_;
 
         // Spherical robot coordinate system
-        // Principal axis of the 3-DoF spherical robot
+        // Principal axis of the 3-DoF spm
         e_principal_ = e3;
 
         // Rotation centre
@@ -137,8 +137,8 @@ private:
         CGA rot_e12_120 = cga_utils::rot(e1 * e2, (float) (2.0 * M_PI / 3.0)); // Rotate s_0_ by 120 degrees to get s_1_
         s_1_ = rot_e12_120 * s_0_ * ~rot_e12_120;
 
-        // IK solver for the spherical robot
-        ik_result_ = cga_ik_spherical_robot::computeSphericalRobotIK(r_b_, r_e_,
+        // IK solver for the spm
+        ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_b_, r_e_,
                                                                      e_principal_, 
                                                                      rot_cen_, 
                                                                      s_0_, s_1_, 
@@ -147,7 +147,7 @@ private:
         
         // Print initial poses of each component
         // Motor positions and orientations
-        std::cout << "Initial position and orientation of the spherical robot:" << std::endl;
+        std::cout << "Initial position and orientation of the spm:" << std::endl;
         std::cout << "motor_0 pos [m] = " << ik_result_.pos_rot_cen_m_0.transpose() << std::endl;
         std::cout << "motor_0 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_0.cast<double>() ).reverse().transpose() << std::endl;
         std::cout << "motor_1 pos [m] = " << ik_result_.pos_rot_cen_m_1.transpose() << std::endl;
@@ -350,8 +350,8 @@ private:
 
     void solveIK() 
     {
-        // Call our CGA-based IK solver for the spherical robot
-        ik_result_ = cga_ik_spherical_robot::computeSphericalRobotIK(r_b_, r_e_,
+        // Call our CGA-based IK solver for the spm
+        ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_b_, r_e_,
                                                                      e_principal_, 
                                                                      rot_cen_, 
                                                                      s_0_, s_1_, 
@@ -380,30 +380,30 @@ private:
     {
         // Poses w.r.t. the rotation centre
         // Rotation centre
-        publishTF(ik_result_.pos_base_rot_cen, ik_result_.quat_base_rot_cen, "srb_rot_cen", "srb_base");
+        publishTF(ik_result_.pos_base_rot_cen, ik_result_.quat_base_rot_cen, "spm_rot_cen", "spm_base");
 
         // Motors of the robot
-        publishTF(ik_result_.pos_rot_cen_m_0, ik_result_.quat_rot_cen_m_0, "srb_motor_0", "srb_rot_cen");
-        publishTF(ik_result_.pos_rot_cen_m_1, ik_result_.quat_rot_cen_m_1, "srb_motor_1", "srb_rot_cen");
-        publishTF(ik_result_.pos_rot_cen_m_2, ik_result_.quat_rot_cen_m_2, "srb_motor_2", "srb_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_m_0, ik_result_.quat_rot_cen_m_0, "spm_motor_0", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_m_1, ik_result_.quat_rot_cen_m_1, "spm_motor_1", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_m_2, ik_result_.quat_rot_cen_m_2, "spm_motor_2", "spm_rot_cen");
 
         // End-plate corners and centre 
-        publishTF(ik_result_.pos_rot_cen_epl_0, ik_result_.quat_rot_cen_epl_0, "srb_epl_0", "srb_rot_cen");
-        publishTF(ik_result_.pos_rot_cen_epl_1, ik_result_.quat_rot_cen_epl_1, "srb_epl_1", "srb_rot_cen");
-        publishTF(ik_result_.pos_rot_cen_epl_2, ik_result_.quat_rot_cen_epl_2, "srb_epl_2", "srb_rot_cen");
-        publishTF(ik_result_.pos_rot_cen_epl_c, ik_result_.quat_rot_cen_epl_c, "srb_epl_c", "srb_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_epl_0, ik_result_.quat_rot_cen_epl_0, "spm_epl_0", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_epl_1, ik_result_.quat_rot_cen_epl_1, "spm_epl_1", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_epl_2, ik_result_.quat_rot_cen_epl_2, "spm_epl_2", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_epl_c, ik_result_.quat_rot_cen_epl_c, "spm_epl_c", "spm_rot_cen");
 
         // End-point on the outer sphere
-        publishTF(ik_result_.pos_rot_cen_ept, ik_result_.quat_rot_cen_ept, "srb_ept", "srb_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_ept, ik_result_.quat_rot_cen_ept, "spm_ept", "spm_rot_cen");
 
         // Elbows
-        publishTF(ik_result_.pos_rot_cen_elb_0, ik_result_.quat_rot_cen_elb_0, "srb_elbow_0", "srb_rot_cen");
-        publishTF(ik_result_.pos_rot_cen_elb_1, ik_result_.quat_rot_cen_elb_1, "srb_elbow_1", "srb_rot_cen");
-        publishTF(ik_result_.pos_rot_cen_elb_2, ik_result_.quat_rot_cen_elb_2, "srb_elbow_2", "srb_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_elb_0, ik_result_.quat_rot_cen_elb_0, "spm_elbow_0", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_elb_1, ik_result_.quat_rot_cen_elb_1, "spm_elbow_1", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_elb_2, ik_result_.quat_rot_cen_elb_2, "spm_elbow_2", "spm_rot_cen");
 
         // // (Optional) end-effector
         // Vector3f pos_yc_ee = (ik_result_.r_s - ik_result_.d) * cga_utils::G2R(e_principal_);
-        // publishTF(pos_yc_ee, Quaternionf::Identity(), "srb_ee", "srb_epl_c");
+        // publishTF(pos_yc_ee, Quaternionf::Identity(), "spm_ee", "spm_epl_c");
 
     }
     
@@ -412,10 +412,10 @@ private:
     {
         // Publish outer sphere marker
         publishSphereMarker(
-            srb_outer_sphere_pub_,
+            spm_outer_sphere_pub_,
             0,                // marker_id
-            "srb_outer_sphere",         // ns
-            "srb_rot_cen",       // frame_id
+            "spm_outer_sphere",         // ns
+            "spm_rot_cen",       // frame_id
             ik_result_.r_s,
             Vector3f::Zero(), // at rot_cen
             outer_sphere_color_ // RGBA
@@ -424,10 +424,10 @@ private:
         // Publish triangle markers
         // Lower triangles for rot_cen-elb-m
         publishTriMarker(
-                         srb_ltri_0_pub_,
+                         spm_ltri_0_pub_,
                          0,                // marker_id
-                         "srb_ltri_0",         // ns
-                         "srb_rot_cen",       // frame_id
+                         "spm_ltri_0",         // ns
+                         "spm_rot_cen",       // frame_id
                          Vector3f::Zero(), // at rot_cen
                          ik_result_.pos_rot_cen_elb_0,
                          ik_result_.pos_rot_cen_m_0,
@@ -435,10 +435,10 @@ private:
                         );
         
         publishTriMarker(
-                         srb_ltri_1_pub_,
+                         spm_ltri_1_pub_,
                          0,                // marker_id
-                         "srb_ltri_1",         // ns
-                         "srb_rot_cen",       // frame_id
+                         "spm_ltri_1",         // ns
+                         "spm_rot_cen",       // frame_id
                          Vector3f::Zero(), // at rot_cen
                          ik_result_.pos_rot_cen_elb_1,
                          ik_result_.pos_rot_cen_m_1,
@@ -446,10 +446,10 @@ private:
                         );
         
         publishTriMarker(
-                         srb_ltri_2_pub_,
+                         spm_ltri_2_pub_,
                          0,                // marker_id
-                         "srb_ltri_2",         // ns
-                         "srb_rot_cen",       // frame_id
+                         "spm_ltri_2",         // ns
+                         "spm_rot_cen",       // frame_id
                          Vector3f::Zero(), // at rot_cen
                          ik_result_.pos_rot_cen_elb_2,
                          ik_result_.pos_rot_cen_m_2,
@@ -458,10 +458,10 @@ private:
 
         // Upper triangles for rot_cen-elb-epl
         publishTriMarker(
-                         srb_utri_0_pub_,
+                         spm_utri_0_pub_,
                          0,                // marker_id
-                         "srb_utri_0",         // ns
-                         "srb_rot_cen",       // frame_id
+                         "spm_utri_0",         // ns
+                         "spm_rot_cen",       // frame_id
                          Vector3f::Zero(), // at rot_cen
                          ik_result_.pos_rot_cen_elb_0,
                          ik_result_.pos_rot_cen_epl_0,
@@ -469,10 +469,10 @@ private:
                         );
         
         publishTriMarker(
-                         srb_utri_1_pub_,
+                         spm_utri_1_pub_,
                          0,                // marker_id
-                         "srb_utri_1",         // ns
-                         "srb_rot_cen",       // frame_id
+                         "spm_utri_1",         // ns
+                         "spm_rot_cen",       // frame_id
                          Vector3f::Zero(), // at rot_cen
                          ik_result_.pos_rot_cen_elb_1,
                          ik_result_.pos_rot_cen_epl_1,
@@ -480,10 +480,10 @@ private:
                         );
         
         publishTriMarker(
-                         srb_utri_2_pub_,
+                         spm_utri_2_pub_,
                          0,                // marker_id
-                         "srb_utri_2",         // ns
-                         "srb_rot_cen",       // frame_id
+                         "spm_utri_2",         // ns
+                         "spm_rot_cen",       // frame_id
                          Vector3f::Zero(), // at rot_cen
                          ik_result_.pos_rot_cen_elb_2,
                          ik_result_.pos_rot_cen_epl_2,
@@ -494,10 +494,10 @@ private:
         publishLightRayMarker(
                               light_ray_marker_pub_,
                               0,                // marker_id
-                              "srb_light_ray",         // ns
-                              "srb_ept",       // frame_id
+                              "spm_light_ray",         // ns
+                              "spm_ept",       // frame_id
                               Vector3f::Zero(), // at rot_cen
-                              Vector3f(0.0, 0.0, ik_result_.r_s), // at srb_ept
+                              Vector3f(0.0, 0.0, ik_result_.r_s), // at spm_ept
                               light_ray_color_
                             );
 
@@ -515,13 +515,13 @@ private:
 
     }
 
-    void visualise_spherical_robot_tf_callback_()
+    void visualise_spm_3dof_tf_callback_()
     {
         auto start = std::chrono::steady_clock::now();
 
         // Get IK target pose (orientation)
         getTargetPose();
-        // Solve IK (joint angles) for the spherical robot
+        // Solve IK (joint angles) for the spm
         solveIK();
 
         auto end = std::chrono::steady_clock::now();
@@ -548,7 +548,7 @@ private:
 int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<VisualiseSphericalRobotTF>();
+  auto node = std::make_shared<VisualiseSPM3DoFTF>();
   rclcpp::spin(node);
   rclcpp::shutdown();
   return 0;

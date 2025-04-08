@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro"  name="robot">
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro"  name="spm_3dof">
 
     <!-- This will include all the contents of example_include.xacro first. Go check it out! -->
     <xacro:include filename="example_include.xacro" />
@@ -21,7 +21,7 @@
 
 
     <!-- base -->
-    <link name="srb_base">
+    <link name="spm_base">
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
@@ -37,24 +37,24 @@
     <!-- world to base -->
     <joint name="joint_world_base" type="fixed">
         <parent link="world"/>
-        <child link="srb_base"/>   
+        <child link="spm_base"/>   
         <origin xyz="0 0 0" rpy="0 0 0"/>
     </joint>
 
 
     <!-- rot_cen -->
-    <link name="srb_rot_cen"></link>
+    <link name="spm_rot_cen"></link>
 
     <!-- base to rot_cen -->
     <joint name="joint_base_rot_cen" type="floating">
-        <parent link="srb_base"/>
-        <child link="srb_rot_cen"/>   
+        <parent link="spm_base"/>
+        <child link="spm_rot_cen"/>   
         <origin xyz="0 0 0" rpy="0 0 0"/>
     </joint>
 
 
     <!-- motor_0 -->
-    <link name="srb_motor_0">
+    <link name="spm_motor_0">
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
@@ -69,14 +69,14 @@
 
     <!-- rot_cen to motor_0 -->
     <joint name="joint_rot_cen_motor_0" type="floating">
-        <parent link="srb_rot_cen"/>
-        <child link="srb_motor_0"/>
+        <parent link="spm_rot_cen"/>
+        <child link="spm_motor_0"/>
         <origin xyz="0 0 0" rpy="0 0 0"/>
     </joint>
 
 
     <!-- motor_1 -->
-    <link name="srb_motor_1">
+    <link name="spm_motor_1">
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
@@ -91,14 +91,14 @@
 
     <!-- rot_cen to motor_1 -->
     <joint name="joint_rot_cen_motor_1" type="floating">
-        <parent link="srb_rot_cen"/>
-        <child link="srb_motor_1"/>
+        <parent link="spm_rot_cen"/>
+        <child link="spm_motor_1"/>
         <origin xyz="0 0 0" rpy="0 0 0"/>
     </joint>
 
 
     <!-- motor_2 -->
-    <link name="srb_motor_2">
+    <link name="spm_motor_2">
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
@@ -113,14 +113,14 @@
 
     <!-- rot_cen to motor_2 -->
     <joint name="joint_rot_cen_motor_2" type="floating">
-        <parent link="srb_rot_cen"/>
-        <child link="srb_motor_2"/>
+        <parent link="spm_rot_cen"/>
+        <child link="spm_motor_2"/>
         <origin xyz="0 0 0" rpy="0 0 0"/>
     </joint>
 
 
     <!-- elbow_0 -->
-    <link name="srb_elbow_0">
+    <link name="spm_elbow_0">
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
@@ -135,14 +135,14 @@
 
     <!-- rot_cen to elbow_0 -->
     <joint name="joint_rot_cen_elbow_0" type="floating">
-        <parent link="srb_rot_cen"/>
-        <child link="srb_elbow_0"/>
+        <parent link="spm_rot_cen"/>
+        <child link="spm_elbow_0"/>
         <origin xyz="0 0 0" rpy="0 0 0"/>
     </joint>
 
 
     <!-- elbow_1 -->
-    <link name="srb_elbow_1">
+    <link name="spm_elbow_1">
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
@@ -157,14 +157,14 @@
 
     <!-- rot_cen to elbow_1 -->
     <joint name="joint_rot_cen_elbow_1" type="floating">
-        <parent link="srb_rot_cen"/>
-        <child link="srb_elbow_1"/>
+        <parent link="spm_rot_cen"/>
+        <child link="spm_elbow_1"/>
         <origin xyz="0 0 0" rpy="0 0 0"/>
     </joint>
 
 
     <!-- elbow_2 -->
-    <link name="srb_elbow_2">
+    <link name="spm_elbow_2">
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
@@ -179,14 +179,14 @@
 
     <!-- rot_cen to elbow_2 -->
     <joint name="joint_rot_cen_elbow_2" type="floating">
-        <parent link="srb_rot_cen"/>
-        <child link="srb_elbow_2"/>
+        <parent link="spm_rot_cen"/>
+        <child link="spm_elbow_2"/>
         <origin xyz="0 0 0" rpy="0 0 0"/>
     </joint>
 
 
     <!-- epl_c -->
-    <link name="srb_epl_c">
+    <link name="spm_epl_c">
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
@@ -201,8 +201,8 @@
 
     <!-- rot_cen to epl_c -->
     <joint name="joint_rot_cen_epl_c" type="floating">
-        <parent link="srb_rot_cen"/>
-        <child link="srb_epl_c"/>
+        <parent link="spm_rot_cen"/>
+        <child link="spm_epl_c"/>
         <origin xyz="0 0 0" rpy="0 0 0"/>
     </joint>
     
