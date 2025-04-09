@@ -26,7 +26,6 @@ def generate_launch_description():
     d_str = str(geometric_params.get("d"))
     r_e_str = str(geometric_params.get("r_e"))
     r_s_in_str = str(geometric_params.get("r_s_in"))
-    
 
     urdf_xacro_path = os.path.join(
         get_package_share_directory("cga_ik"),
@@ -43,6 +42,7 @@ def generate_launch_description():
             " ",
             urdf_xacro_path,
             " ",
+            
             "r_c:=", r_c_str, " ",
             "ang_b_m:=", ang_b_m_str, " ",
             "r_b:=", r_b_str, " ",
@@ -53,15 +53,12 @@ def generate_launch_description():
         ]
     )
     
-    # robot_description_content = xacro.process_file(urdf_xacro_path).toxml()
-
     robot_description = {
         "robot_description": ParameterValue(
             robot_description_content,
             value_type=str
         )
     }
-    
     
     robot_state_publisher_node = Node(
         package="robot_state_publisher",
