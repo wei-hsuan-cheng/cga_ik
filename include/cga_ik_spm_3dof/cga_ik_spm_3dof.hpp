@@ -1,30 +1,18 @@
 // This IK solution is originally adopted from: https://slides.com/hugohadfield/game2020
 // A JavaScript implementation of this code: https://enkimute.github.io/ganja.js/examples/coffeeshop.html#2DmBscfSXO
 
-#ifndef CGA_IK_SPHERICAL_ROBOT_HPP
-#define CGA_IK_SPHERICAL_ROBOT_HPP
+#ifndef CGA_IK_SPM_3DOF_HPP
+#define CGA_IK_SPM_3DOF_HPP
 
 #include <Eigen/Dense>
 #include "cga/cga_utils.hpp"
 #include "robot_math_utils/robot_math_utils_v1_9.hpp"
 
-using Eigen::Quaternionf;
-using Eigen::Matrix2f;
-using Eigen::Matrix3f;
-using Eigen::Matrix4f;
-using Eigen::MatrixXf;
-
-using Matrix6f = Eigen::Matrix<float, 6, 6>;
-using Eigen::Vector2f;
-using Eigen::Vector3f;
-using Eigen::Vector4f;
-using Vector6f = Eigen::Matrix<float, 6, 1>;
-using Vector7f = Eigen::Matrix<float, 7, 1>;
-using Eigen::VectorXf;
-
+using cga_utils::Grade;
 using cga_utils::up;
 using cga_utils::down;
-using cga_utils::Grade;
+using cga_utils::cross;
+using cga_utils::zyxEuler2Rotor;
 using RM = RMUtils;
 
 namespace cga_ik_spm_3dof {
@@ -51,15 +39,6 @@ CGA constructSphere(const float &r_s, const int &grade)
     
 }
 
-// Helper: convert zyx Euler angles to rotor
-CGA zyxEuler2Rotor(const Vector3f &zyx_euler)
-{
-    CGA R_z = cga_utils::rot(e1 * e2, zyx_euler(0));
-    CGA R_y = cga_utils::rot(e3 * e1, zyx_euler(1));
-    CGA R_x = cga_utils::rot(e2 * e3, zyx_euler(2));
-    return (R_z * R_y * R_x).normalized();
-}
-
 // Helper: Three basis vectors to quaternion orientation
 Quaternionf computeQuatFromBasis(const CGA &x_hat, const CGA &y_hat, const CGA &z_hat)
 {
@@ -75,8 +54,8 @@ Quaternionf computeMotorInitalQuat(const CGA &rc, const CGA &pos_rc_m)
 {
     CGA z_hat = ((-1) * pos_rc_m).normalized();
     CGA vec_rc = rc.normalized();
-    CGA x_hat_i = ( (-1) * e123 * (z_hat ^ vec_rc) ).normalized(); // Dual 
-    CGA y_hat_i = ( (-1) * e123 * (z_hat ^ x_hat_i) ).normalized(); // Dual
+    CGA x_hat_i = ( cross(z_hat, vec_rc) ).normalized();
+    CGA y_hat_i = ( cross(z_hat, x_hat_i) ).normalized(); // Dual    
     return computeQuatFromBasis(x_hat_i, y_hat_i, z_hat);
 }
 
@@ -85,8 +64,8 @@ Quaternionf computeMotorQuat(const CGA &pos_rc_epl, const CGA &pos_rc_m)
 {
     CGA z_hat = ((-1) * pos_rc_m).normalized();
     CGA vec_m_epl = ( down(pos_rc_epl) - pos_rc_m ).normalized();
-    CGA x_hat = ( (-1) * e123 * (z_hat ^ vec_m_epl) ).normalized(); // Dual 
-    CGA y_hat = ( (-1) * e123 * (z_hat ^ x_hat) ).normalized(); // Dual
+    CGA x_hat = ( cross(z_hat, vec_m_epl) ).normalized();
+    CGA y_hat = ( cross(z_hat, x_hat) ).normalized(); // Dual
     return computeQuatFromBasis(x_hat, y_hat, z_hat);
 }
 
@@ -116,8 +95,8 @@ Quaternionf computeEndPlateCornerQuat(const CGA &pos_rc_epl, const CGA &pos_rc_e
 {
     CGA z_hat = ( (-1) * down(pos_rc_epl) ).normalized();
     CGA vec_epl_epl_c = (down(pos_rc_epl_c) - down(pos_rc_epl)).normalized();
-    CGA x_hat = ( (-1) * e123 * (z_hat ^ vec_epl_epl_c) ).normalized(); // Dual 
-    CGA y_hat = ( (-1) * e123 * (z_hat ^ x_hat) ).normalized(); // Dual
+    CGA x_hat = ( cross(z_hat, vec_epl_epl_c) ).normalized();
+    CGA y_hat = ( cross(z_hat, x_hat) ).normalized(); // Dual
     return computeQuatFromBasis(x_hat, y_hat, z_hat);
 }
 
@@ -156,8 +135,8 @@ Quaternionf computeElbowQuat(const CGA &pos_rc_epl, const CGA &pos_rc_elb)
 {
     CGA z_hat = ( (-1) * down(pos_rc_elb) ).normalized();
     CGA vec_elb_epl = (down(pos_rc_epl) - down(pos_rc_elb)).normalized();
-    CGA y_hat = ( (-1) * e123 * (z_hat ^ vec_elb_epl) ).normalized(); // Dual 
-    CGA x_hat = ( (-1) * e123 * (y_hat ^ z_hat) ).normalized(); // Dual
+    CGA y_hat = ( cross(z_hat, vec_elb_epl) ).normalized();
+    CGA x_hat = ( cross(y_hat, z_hat) ).normalized();
     return computeQuatFromBasis(x_hat, y_hat, z_hat);
 }
 
@@ -342,4 +321,4 @@ inline SPM3DoFIKResult computeSPM3DoFIK(
 
 } // namespace cga_ik_spm_3dof
 
-#endif // CGA_IK_SPHERICAL_ROBOT_HPP
+#endif // CGA_IK_SPM_3DOF_HPP

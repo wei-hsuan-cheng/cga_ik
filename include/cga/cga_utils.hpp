@@ -5,6 +5,20 @@
 #include <Eigen/Dense>
 #include <iostream>
 
+using Eigen::Quaternionf;
+using Eigen::Matrix2f;
+using Eigen::Matrix3f;
+using Eigen::Matrix4f;
+using Eigen::MatrixXf;
+
+using Matrix6f = Eigen::Matrix<float, 6, 6>;
+using Eigen::Vector2f;
+using Eigen::Vector3f;
+using Eigen::Vector4f;
+using Vector6f = Eigen::Matrix<float, 6, 1>;
+using Vector7f = Eigen::Matrix<float, 7, 1>;
+using Eigen::VectorXf;
+
 using cga::CGA;
 
 namespace cga_utils {
@@ -81,7 +95,7 @@ namespace cga_utils {
     // where ni is the "infinity" vector.
     //-----------------------------------------------------------------
     inline CGA trans(const CGA &trans_vec) {
-        return CGA(1.0f, 0) - 0.5f * (trans_vec * cga::ni);
+        return CGA(1.0f, 0) - 0.5f * (trans_vec * ni);
     }
 
     //-----------------------------------------------------------------
@@ -93,12 +107,12 @@ namespace cga_utils {
     //-----------------------------------------------------------------
     inline CGA up(float x, float y, float z) {
         float d = x*x + y*y + z*z;
-        return x * cga::e1 + y * cga::e2 + z * cga::e3 + 0.5f * d * cga::ni + cga::no;
+        return x * e1 + y * e2 + z * e3 + 0.5f * d * ni + no;
     }
 
     inline CGA up(const CGA &vec_G3) {
         // Assumes vec_G3 has scalar part zero and only grade‑1 components (indices 1–3)
-        return vec_G3 + 0.5f * (vec_G3 * vec_G3) * cga::ni + cga::no;
+        return vec_G3 + 0.5f * (vec_G3 * vec_G3) * ni + no;
     }
 
     //-----------------------------------------------------------------
@@ -108,7 +122,30 @@ namespace cga_utils {
     //   down(vec_G41) = (vec_G41 ^ (no ^ ni)) * (no ^ ni) * ((-1)*vec_G41 | ni).inverse()
     //-----------------------------------------------------------------
     inline CGA down(const CGA &vec_G41) {
-        return (vec_G41 ^ (cga::no ^ cga::ni)) * (cga::no ^ cga::ni) * (((-1.0f) * vec_G41 | cga::ni).inverse());
+        return (vec_G41 ^ (no ^ ni)) * (no ^ ni) * (((-1.0f) * vec_G41 | ni).inverse());
+    }
+
+    //-----------------------------------------------------------------
+    // Cross product in GA
+    //-----------------------------------------------------------------
+    // inline CGA cross(const CGA &a, const CGA &b) {
+    //     return (-1) * e123 * (a ^ b); // Take the dual of the wedge product
+    // }
+
+    inline CGA cross(const CGA &a, const CGA &b) {
+        CGA wedge = a ^ b;
+        return (-1) * e123 * wedge; // Take the dual of the wedge product
+    }
+
+    //-----------------------------------------------------------------
+    // Conversions between different SO(3) representations.
+    // zyx_euler <-> CGA rotor
+    //-----------------------------------------------------------------
+    inline CGA zyxEuler2Rotor(const Vector3f &zyx_euler) {
+        CGA R_z = cga_utils::rot(e1 * e2, zyx_euler(0));
+        CGA R_y = cga_utils::rot(e3 * e1, zyx_euler(1));
+        CGA R_x = cga_utils::rot(e2 * e3, zyx_euler(2));
+        return (R_z * R_y * R_x).normalized();
     }
 
 

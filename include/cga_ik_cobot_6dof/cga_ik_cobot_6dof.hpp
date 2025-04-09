@@ -1,6 +1,6 @@
 
 /*
-cga_ik, an inverse kinematics (IK) solver based on conformal geometric algebra (CGA)
+cga_ik_cobot_6dof, an inverse kinematics (IK) solver for 6-DoF cobot based on conformal geometric algebra (CGA)
 Written by wei-hsuan-cheng
 
 G41 structure: e1 * e1 = e2 * e2 = e3 * e3 = e4 * e4 = +1, e5 * e5 = -1
@@ -40,7 +40,7 @@ using cga_utils::up;
 using cga_utils::down;
 using RM = RMUtils;
 
-namespace cga_ik {
+namespace cga_ik_cobot_6dof {
 
     // Data structure for the SE(3) pose in CGA.
     struct CGAKinematicsPose {
@@ -99,16 +99,16 @@ namespace cga_ik {
     };
 
     // Data type for robot configuration.
-    struct CGAIKRobotConfig {
+    struct RobotConfig {
         int kud;  // elbow: 1 for up, -1 for down
         int klr;  // shoulder: 1 for right, -1 for left
         int kfn;  // wrist: 1 for not flipped, -1 for flipped
 
         // Default constructor initializes to 1.
-        CGAIKRobotConfig() {}
+        RobotConfig() {}
 
         // Parameterized constructor.
-        CGAIKRobotConfig(int kud, int klr, int kfn)
+        RobotConfig(int kud, int klr, int kfn)
             : kud(kud), klr(klr), kfn(kfn) {}
     };
 
@@ -183,8 +183,6 @@ namespace cga_ik {
     // }
 
 
-
-
     // Existing functions for loading the DH table and robot configuration.
     static inline DHTable loadDHTable() {
         double mm2m = 1e-3;
@@ -199,8 +197,8 @@ namespace cga_ik {
     }
 
     // Helper function to return the default robot configuration.
-    static inline CGAIKRobotConfig setRobotConfig(const int& kud = 1, const int& klr = 1, const int& kfn = 1) {
-        return CGAIKRobotConfig(kud, klr, kfn);
+    static inline RobotConfig setRobotConfig(const int& kud = 1, const int& klr = 1, const int& kfn = 1) {
+        return RobotConfig(kud, klr, kfn);
     }
 
     // Global variables for CGA IK
@@ -382,7 +380,7 @@ namespace cga_ik {
 
 
     // Solve for the null points (frame origins) used in the IK solution.
-    static inline void SolveNullPoints(const Vector6d& pose, const DHTable& dh_table, const CGAIKRobotConfig& robot_config) {
+    static inline void SolveNullPoints(const Vector6d& pose, const DHTable& dh_table, const RobotConfig& robot_config) {
         // Extract the target pose.
         CGAKinematicsPose pose_cga = R6Pose2CGAKinematicsPose(pose);
 
@@ -632,6 +630,6 @@ namespace cga_ik {
 
 
 
-} // namespace cga_ik
+} // namespace cga_ik_cobot_6dof
 
 #endif // CGA_IK_HPP

@@ -21,9 +21,14 @@ def generate_launch_description():
     home_dir = os.path.expanduser("~")
     sup_tms_params = os.path.join(home_dir, "sup_tms/tmr_ws/config/sup_tms_params.yaml")
     
-    pose_f_tcp_params = load_yaml_file_absolute_path(sup_tms_params).get("pose_f_tcp_params", {})
+    cobot_dh_table = os.path.join(get_package_share_directory("cga_ik"), "config", "cobot_dh_table.yaml")
     
     urdf_path = os.path.join(get_package_share_directory("cga_ik"), "config", "tm5-700.urdf.xacro")
+    
+    tm5_700_dh_table = load_yaml_file_absolute_path(cobot_dh_table).get("tm5-700", {})
+    pose_f_tcp_params = load_yaml_file_absolute_path(sup_tms_params).get("pose_f_tcp_params", {})
+    
+    
 
     if not os.path.exists(urdf_path):
         raise FileNotFoundError(f"URDF file not found at {urdf_path}")
@@ -54,7 +59,8 @@ def generate_launch_description():
         executable="visualise_cobot_6dof",
         name="visualise_cobot_6dof",
         output="screen",
-        parameters=[pose_f_tcp_params],
+        parameters=[pose_f_tcp_params,
+                    tm5_700_dh_table,],
     )
     
     

@@ -10,7 +10,7 @@
 #include <chrono>
 #include <memory>
 
-#include "robot_math_utils/robot_math_utils_v1_9.hpp"
+#include "robot_math_utils/robot_math_utils_v1_10.hpp"
 #include "cga_ik_cobot_6dof/cga_ik_cobot_6dof.hpp"
 
 using namespace std::chrono_literals;
@@ -20,7 +20,7 @@ class VisualiseCobot6DoF : public rclcpp::Node
 {
 public:
   VisualiseCobot6DoF()
-  : Node("visualise_cobot_6dof"), dh_table_(cga_ik::loadDHTable())
+  : Node("visualise_cobot_6dof")
   {
     // Initialisation
     updateDHTable();
@@ -64,7 +64,7 @@ private:
   // DH table and joint angles.
   DHTable dh_table_;
   Vector6d target_pose_;
-  cga_ik::CGAIKRobotConfig robot_config_;
+  cga_ik_cobot_6dof::RobotConfig robot_config_;
   Vector6d joint_angles_;
   Vector6d resulting_pose_;
   
@@ -83,9 +83,44 @@ private:
     // std::cout << "quat_cmd_ = " << quat_cmd_.w() << ", " << quat_cmd_.x() << ", " << quat_cmd_.y() << ", " << quat_cmd_.z() << std::endl;
   }
 
+  DHParams convertDHParams(const std::vector<double> & dh_j_yaml)
+  {
+    // Convert to dh_params format with unit conversion: [mm -> m], [deg -> rad]
+    return DHParams(dh_j_yaml[0] * RM::d2r, dh_j_yaml[1] * mm2m, dh_j_yaml[2] * mm2m, dh_j_yaml[3] * RM::d2r);
+  }
+  
   void updateDHTable()
   {
-    // dh_table_ = cga_ik::loadDHTable();
+    // Load D-H table from yaml file
+    this->declare_parameter<std::vector<double>>("dh_j1", {0.0, 0.0, 0.0, 0.0});
+    this->declare_parameter<std::vector<double>>("dh_j2", {0.0, 0.0, 0.0, 0.0});
+    this->declare_parameter<std::vector<double>>("dh_j3", {0.0, 0.0, 0.0, 0.0});
+    this->declare_parameter<std::vector<double>>("dh_j4", {0.0, 0.0, 0.0, 0.0});
+    this->declare_parameter<std::vector<double>>("dh_j5", {0.0, 0.0, 0.0, 0.0});
+    this->declare_parameter<std::vector<double>>("dh_j6", {0.0, 0.0, 0.0, 0.0});
+
+    std::vector<double> dh_j1_yaml;
+    std::vector<double> dh_j2_yaml;
+    std::vector<double> dh_j3_yaml;
+    std::vector<double> dh_j4_yaml;
+    std::vector<double> dh_j5_yaml;
+    std::vector<double> dh_j6_yaml;
+
+    this->get_parameter("dh_j1", dh_j1_yaml);
+    this->get_parameter("dh_j2", dh_j2_yaml);
+    this->get_parameter("dh_j3", dh_j3_yaml);
+    this->get_parameter("dh_j4", dh_j4_yaml);
+    this->get_parameter("dh_j5", dh_j5_yaml);
+    this->get_parameter("dh_j6", dh_j6_yaml);
+
+    // dh_table_ = cga_ik_cobot_6dof::loadDHTable();
+    dh_table_ = DHTable({convertDHParams(dh_j1_yaml),
+                         convertDHParams(dh_j2_yaml),
+                         convertDHParams(dh_j3_yaml),
+                         convertDHParams(dh_j4_yaml),
+                         convertDHParams(dh_j5_yaml),
+                         convertDHParams(dh_j6_yaml)});
+
     std::cout << "\n----- D-H table (alpha_{i-1}, a_{i-1}, d_{i}, theta_{i}) -----" << std::endl;
     std::cout << dh_table_ << std::endl;
   }
@@ -169,7 +204,7 @@ private:
   void updateIKParams()
   {
     target_pose_ = Vector6d(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-    robot_config_ = cga_ik::setRobotConfig(1, 1, 1);
+    robot_config_ = cga_ik_cobot_6dof::setRobotConfig(1, 1, 1);
     joint_angles_ = Vector6d(0.0, 0.0, 90.0, 0.0, 90.0, -90.0) * RM::d2r;
     resulting_pose_ = Vector6d(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
   }
@@ -225,17 +260,17 @@ private:
 
   void solveIK() {
     // Different robot configurations (elbow up/down, shoulder left/right, wrist not flipped/flipped)
-    robot_config_ = cga_ik::setRobotConfig(1, 1, 1);
-    // robot_config_ = cga_ik::setRobotConfig(1, -1, -1);
-    // robot_config_ = cga_ik::setRobotConfig(1, 1, -1);
-    // robot_config_ = cga_ik::setRobotConfig(-1, 1, 1);
-    // robot_config_ = cga_ik::setRobotConfig(1, -1, 1);
+    robot_config_ = cga_ik_cobot_6dof::setRobotConfig(1, 1, 1);
+    // robot_config_ = cga_ik_cobot_6dof::setRobotConfig(1, -1, -1);
+    // robot_config_ = cga_ik_cobot_6dof::setRobotConfig(1, 1, -1);
+    // robot_config_ = cga_ik_cobot_6dof::setRobotConfig(-1, 1, 1);
+    // robot_config_ = cga_ik_cobot_6dof::setRobotConfig(1, -1, 1);
 
-    cga_ik::SolveNullPoints(target_pose_, dh_table_, robot_config_);
+    cga_ik_cobot_6dof::SolveNullPoints(target_pose_, dh_table_, robot_config_);
     
-    if (cga_ik::reachable) {
-        cga_ik::SolveJointAngles();
-        joint_angles_ = cga_ik::joints;
+    if (cga_ik_cobot_6dof::reachable) {
+        cga_ik_cobot_6dof::SolveJointAngles();
+        joint_angles_ = cga_ik_cobot_6dof::joints;
     } else {
         std::cerr << "\nTarget target_pose is not reachable!" << std::endl;
     }
@@ -305,7 +340,7 @@ private:
     }
 
     // CGA FK
-    resulting_pose_ = cga_ik::CGAFK(joint_angles_, dh_table_);
+    resulting_pose_ = cga_ik_cobot_6dof::CGAFK(joint_angles_, dh_table_);
 
     // Compare FK and IK
     Vector6d pose_res = RM::R6Poses2RelativeR6Pose(target_pose_, resulting_pose_);
@@ -344,7 +379,7 @@ private:
     auto end = std::chrono::steady_clock::now();
     double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
     double frequency = (elapsed_ms > 0.0) ? 1000.0 / elapsed_ms : 0.0;
-    // RCLCPP_INFO(this->get_logger(), "Ts = %.2f [ms], fs = %.2f [Hz]", elapsed_ms, frequency);
+    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "Ts = %.2f [ms], fs = %.2f [Hz]", elapsed_ms, frequency);
 
     // Publish TFs
     publishAllTransforms();
