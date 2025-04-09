@@ -38,6 +38,7 @@ public:
     
     auto qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable();
     spm_outer_sphere_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_outer_sphere", qos);
+    spm_inner_sphere_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_inner_sphere", qos);
     spm_ltri_0_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_ltri_0", qos);
     spm_ltri_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_ltri_1", qos);
     spm_ltri_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_ltri_2", qos);
@@ -60,6 +61,7 @@ private:
 
     // Publisher for the sphere marker
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spm_outer_sphere_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spm_inner_sphere_pub_;
 
     // Publisher for the triangle marker
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spm_ltri_0_pub_;
@@ -79,12 +81,12 @@ private:
 
     Quaternionf quat_cmd_;
 
-    float r_b_, ratio_c_b_, r_c_, ratio_e_b_, r_e_;
-    CGA e_principal_, rot_cen_, s_0_, s_1_;
+    float r_c_, ang_b_m_, r_b_, r_s_out_, d_, r_e_, r_s_in_;
+
+    CGA e_principal_, s_0_, s_1_;
     cga_ik_spm_3dof::SPM3DoFIKResult ik_result_;
 
-    Vector4f outer_sphere_color_;
-    std::vector<Vector3f> linkArcPts_;
+    Vector4f outer_sphere_color_, inner_sphere_color_;
     Vector4f utri_color_, ltri_color_, light_ray_color_;
     float plate_thickness_;    
 
@@ -103,51 +105,66 @@ private:
         // IK target pose (quaternion orientation)
         quat_cmd_ = Quaternionf::Identity();
 
-        // Spherical robot geometries
+        
+        // SPM geometries
         // Load geometric params from yaml file
         // Declare default parameters (in case the YAML file doesn't provide them)
+        this->declare_parameter<float>("r_c", 1.0);
+        this->declare_parameter<float>("ang_b_m", 0.0);
         this->declare_parameter<float>("r_b", 1.0);
-        this->declare_parameter<float>("ratio_c_b", 1.0);
-        this->declare_parameter<float>("ratio_e_b", 1.0);
+        this->declare_parameter<float>("r_s_out", 1.0);
+        this->declare_parameter<float>("d", 1.0);
+        this->declare_parameter<float>("r_e", 1.0);
+        this->declare_parameter<float>("r_s_in", 1.0);
 
-        // Retrieve the parameters
-        // Base radius, rotation centre height, and end-plate radius
+        this->get_parameter("r_c", r_c_);
+        this->get_parameter("ang_b_m", ang_b_m_);
         this->get_parameter("r_b", r_b_);
-        this->get_parameter("ratio_c_b", ratio_c_b_);
-        this->get_parameter("ratio_e_b", ratio_e_b_);
+        this->get_parameter("r_s_out", r_s_out_);
+        this->get_parameter("d", d_);
+        this->get_parameter("r_e", r_e_);
+        this->get_parameter("r_s_in", r_s_in_);
 
-        r_c_ = ratio_c_b_ * r_b_;
-        r_e_ = ratio_e_b_ * r_b_;
-
-        // Spherical robot coordinate system
+        // SPM coordinate system
         // Principal axis of the 3-DoF spm
         e_principal_ = e3;
-
-        // Rotation centre
-        rot_cen_ = r_c_ * e_principal_;
-
         // Each motor position is set in the base plane, separated by 120 [deg].
         s_0_ = e1;
         CGA rot_e12_120 = cga_utils::rot(e1 * e2, (float) (2.0 * M_PI / 3.0)); // Rotate s_0_ by 120 degrees to get s_1_
         s_1_ = rot_e12_120 * s_0_ * ~rot_e12_120;
 
         // IK solver for the spm
-        ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_b_, r_e_,
-                                                                     e_principal_, 
-                                                                     rot_cen_, 
-                                                                     s_0_, s_1_, 
-                                                                     Quaternionf::Identity());
+        ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_c_, ang_b_m_, r_b_, r_s_out_, d_, r_e_, r_s_in_,
+                                                       e_principal_, 
+                                                       s_0_, s_1_, 
+                                                       Quaternionf::Identity());
 
         
-        // Print initial poses of each component
-        // Motor positions and orientations
-        std::cout << "Initial position and orientation of the spm:" << std::endl;
-        std::cout << "motor_0 pos [m] = " << ik_result_.pos_rot_cen_m_0.transpose() << std::endl;
-        std::cout << "motor_0 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_0.cast<double>() ).reverse().transpose() << std::endl;
-        std::cout << "motor_1 pos [m] = " << ik_result_.pos_rot_cen_m_1.transpose() << std::endl;
-        std::cout << "motor_1 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_1.cast<double>() ).reverse().transpose() << std::endl;
-        std::cout << "motor_2 pos [m] = " << ik_result_.pos_rot_cen_m_2.transpose() << std::endl;
-        std::cout << "motor_2 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_2.cast<double>() ).reverse().transpose() << std::endl;
+        // Print robot geometric parameters
+        std::cout << "--------------------------------------------------------------" << std::endl;
+        std::cout << "---------- Geometric parameters of the spm [m, deg] ----------" << std::endl;
+        std::cout << "--------------------------------------------------------------" << std::endl;
+
+        std::cout << "r_c = " << r_c_ << std::endl;
+        std::cout << "ang_b_m = " << ang_b_m_ << std::endl;
+        std::cout << "r_b = " << r_b_ << std::endl;
+        std::cout << "r_s_out = " << r_s_out_ << std::endl;
+        std::cout << "d = " << d_ << std::endl;
+        std::cout << "r_e = " << r_e_ << std::endl;
+        std::cout << "r_s_in = " << r_s_in_ << std::endl;
+
+        std::cout << "--------------------------------------------------------------" << std::endl;
+        
+
+        // // Print initial poses of each component
+        // // Motor positions and orientations
+        // std::cout << "---------- Initial position and orientation of the spm ----------" << std::endl;
+        // std::cout << "motor_0 pos [m] = " << ik_result_.pos_rot_cen_m_0.transpose() << std::endl;
+        // std::cout << "motor_0 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_0.cast<double>() ).reverse().transpose() << std::endl;
+        // std::cout << "motor_1 pos [m] = " << ik_result_.pos_rot_cen_m_1.transpose() << std::endl;
+        // std::cout << "motor_1 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_1.cast<double>() ).reverse().transpose() << std::endl;
+        // std::cout << "motor_2 pos [m] = " << ik_result_.pos_rot_cen_m_2.transpose() << std::endl;
+        // std::cout << "motor_2 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_2.cast<double>() ).reverse().transpose() << std::endl;
 
     }
 
@@ -155,6 +172,9 @@ private:
     {
         // Outer sphere
         outer_sphere_color_ = Vector4f(0.0f, 1.0f, 0.0f, 0.15f);
+
+        // Inner sphere
+        inner_sphere_color_ = Vector4f(1.0f, 0.0f, 0.0f, 0.15f);
 
         // Triangles
         utri_color_ = Vector4f(0.0f, 0.0f, 1.0f, 0.8f);
@@ -334,8 +354,8 @@ private:
         float th = (0.25 * M_PI) * std::sin(2.0 * M_PI * freq * t_);
         // float th = 0.0;
 
-        Vector4d axis_ang(0.0, 0.0, 1.0, (double) th);
-        // Vector4d axis_ang(0.0, 1.0, 0.0, (double) th);
+        // Vector4d axis_ang(0.0, 0.0, 1.0, (double) th);
+        Vector4d axis_ang(0.0, 1.0, 0.0, (double) th);
         // Vector4d axis_ang(1.0, 0.0, 0.0, (double) th);
 
         Vector3d so3 = (axis_ang.head(3)).normalized() * axis_ang(3);
@@ -345,11 +365,10 @@ private:
     void solveIK() 
     {
         // Call our CGA-based IK solver for the spm
-        ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_b_, r_e_,
-                                                                     e_principal_, 
-                                                                     rot_cen_, 
-                                                                     s_0_, s_1_, 
-                                                                     quat_cmd_);
+        ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_c_, ang_b_m_, r_b_, r_s_out_, d_, r_e_, r_s_in_,
+                                                       e_principal_, 
+                                                       s_0_, s_1_, 
+                                                       quat_cmd_);
         
     }
 
@@ -381,6 +400,11 @@ private:
         publishTF(ik_result_.pos_rot_cen_m_1, ik_result_.quat_rot_cen_m_1, "spm_motor_1", "spm_rot_cen");
         publishTF(ik_result_.pos_rot_cen_m_2, ik_result_.quat_rot_cen_m_2, "spm_motor_2", "spm_rot_cen");
 
+        // Pivots of the robot
+        publishTF(ik_result_.pos_rot_cen_piv_0, ik_result_.quat_rot_cen_piv_0, "spm_pivot_0", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_piv_1, ik_result_.quat_rot_cen_piv_1, "spm_pivot_1", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_piv_2, ik_result_.quat_rot_cen_piv_2, "spm_pivot_2", "spm_rot_cen");
+
         // End-plate corners and centre 
         publishTF(ik_result_.pos_rot_cen_epl_0, ik_result_.quat_rot_cen_epl_0, "spm_epl_0", "spm_rot_cen");
         publishTF(ik_result_.pos_rot_cen_epl_1, ik_result_.quat_rot_cen_epl_1, "spm_epl_1", "spm_rot_cen");
@@ -396,7 +420,7 @@ private:
         publishTF(ik_result_.pos_rot_cen_elb_2, ik_result_.quat_rot_cen_elb_2, "spm_elbow_2", "spm_rot_cen");
 
         // // (Optional) end-effector
-        // Vector3f pos_yc_ee = (ik_result_.r_s - ik_result_.d) * cga_utils::G2R(e_principal_);
+        // Vector3f pos_yc_ee = (ik_result_.r_s_in - ik_result_.d) * cga_utils::G2R(e_principal_);
         // publishTF(pos_yc_ee, Quaternionf::Identity(), "spm_ee", "spm_epl_c");
 
     }
@@ -410,9 +434,20 @@ private:
             0,                // marker_id
             "spm_outer_sphere",         // ns
             "spm_rot_cen",       // frame_id
-            ik_result_.r_s,
+            ik_result_.r_s_out,
             Vector3f::Zero(), // at rot_cen
             outer_sphere_color_ // RGBA
+        );
+
+        // Publish inner sphere marker
+        publishSphereMarker(
+            spm_inner_sphere_pub_,
+            0,                // marker_id
+            "spm_inner_sphere",         // ns
+            "spm_rot_cen",       // frame_id
+            ik_result_.r_s_in,
+            Vector3f::Zero(), // at rot_cen
+            inner_sphere_color_ // RGBA
         );
 
         // Publish triangle markers
@@ -491,7 +526,7 @@ private:
                               "spm_light_ray",         // ns
                               "spm_ept",       // frame_id
                               Vector3f::Zero(), // at rot_cen
-                              Vector3f(0.0, 0.0, ik_result_.r_s), // at spm_ept
+                              Vector3f(0.0, 0.0, ik_result_.r_s_in * 2.0f), // at spm_ept
                               light_ray_color_
                             );
 
@@ -503,7 +538,8 @@ private:
         // // Compute the are of the end-plate triangle
 
         // // Compare the lengths
-        // std::cout << "(Outer sphere radius) r_s = d_rc_elp_i = d_rc_elb_i = " << ik_result_.r_s << std::endl;
+        // std::cout << "(Outer sphere radius) r_s_out = d_rc_elb_i = " << ik_result_.r_s_out << std::endl;
+        // std::cout << "(Inner sphere radius) r_s_in = d_rc_elp_i = " << ik_result_.r_s_in << std::endl;
         // std::cout << "d = d_rc_yc = " << ik_result_.d << std::endl;
 
 

@@ -128,10 +128,6 @@ namespace cga_utils {
     //-----------------------------------------------------------------
     // Cross product in GA
     //-----------------------------------------------------------------
-    // inline CGA cross(const CGA &a, const CGA &b) {
-    //     return (-1) * e123 * (a ^ b); // Take the dual of the wedge product
-    // }
-
     inline CGA cross(const CGA &a, const CGA &b) {
         CGA wedge = a ^ b;
         return (-1) * e123 * wedge; // Take the dual of the wedge product
@@ -148,8 +144,23 @@ namespace cga_utils {
         return (R_z * R_y * R_x).normalized();
     }
 
-
-
+    //-----------------------------------------------------------------
+    // CGA sphere (grade-1 or grade-4)
+    // Construct the outer sphere S with radius r centred at c
+    //-----------------------------------------------------------------
+    inline CGA sphere(const float &r, const CGA &c, const int &grade)
+    {
+        CGA s = up(c) - 0.5f * (r * r) * ni;
+        switch (grade) {
+            case 1:
+                return s;
+            case 4:
+                return !s;
+            default:
+                throw std::invalid_argument("[cga_utils::sphere() ERROR] Invalid grade for CGA sphere construction");
+        }
+        
+    }
 
 } // namespace cga_utils
 
