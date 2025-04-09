@@ -21,24 +21,18 @@ public:
   VisualiseSPM3DoF()
   : Node("visualise_spm_3dof")
   {
-    // Initialise time spec
+    // Initialisation
     initTimeSpec();
-    // Initialise CGA IK for spm
     initSPMIK();
-    // Initialise robot visuals
     initRobotVisual();
 
-
-    // Set up a TF broadcaster
+    // ROS 2 components
     tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
-
-    // Timer
     timer_ = this->create_wall_timer(
       std::chrono::milliseconds(static_cast<int>(Ts_ * 1000)),
       std::bind(&VisualiseSPM3DoF::visualise_spm_3dof_callback_, this)
     );
 
-    // Publishers
     joint_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
     angles_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/spm_3dof/joint_states", 10);
     

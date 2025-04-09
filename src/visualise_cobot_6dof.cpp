@@ -23,13 +23,13 @@ public:
   : Node("visualise_cobot_6dof")
   {
     // Initialisation
-    updateDHTable();
-    updateTimeSpecParams();
-    updateControlParams();
-    updateTCPParams();
-    updateIKParams();
+    initTimeSpec();
+    initDHTable();
+    initTCPParams();
+    initControlParams();
+    initCobotIK();
 
-
+    // ROS 2 components
     tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
     timer_ = this->create_wall_timer(
       std::chrono::milliseconds(static_cast<int>(Ts_ * 1000)),
@@ -43,6 +43,7 @@ public:
     cga_ik_joint_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/visualise_cobot_6dof/joint_states", 10);
     joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
     
+    RCLCPP_INFO(this->get_logger(), "visualise_cobot_6dof node started.");
     
   }
 
@@ -89,7 +90,14 @@ private:
     return DHParams(dh_j_yaml[0] * RM::d2r, dh_j_yaml[1] * mm2m, dh_j_yaml[2] * mm2m, dh_j_yaml[3] * RM::d2r);
   }
   
-  void updateDHTable()
+  void initTimeSpec() 
+  {
+    t_ = 0.0;
+    fs_ = 60.0;
+    Ts_ = 1.0 / fs_;
+  }
+
+  void initDHTable()
   {
     // Load D-H table from yaml file
     this->declare_parameter<std::vector<double>>("dh_j1", {0.0, 0.0, 0.0, 0.0});
@@ -124,20 +132,8 @@ private:
     std::cout << "\n----- D-H table (alpha_{i-1}, a_{i-1}, d_{i}, theta_{i}) -----" << std::endl;
     std::cout << dh_table_ << std::endl;
   }
-  
-  void updateTimeSpecParams() 
-  {
-    t_ = 0.0;
-    fs_ = 60.0;
-    Ts_ = 1.0 / fs_;
-  }
 
-  void updateControlParams()
-  {
-    quat_cmd_ = Quaterniond::Identity();
-  }
-
-  void updateTCPParams()
+  void initTCPParams()
   {
     // Load pos_quat_f_tcp_ from yaml file
     // Declare default parameters (in case the YAML file doesn't provide them)
@@ -154,6 +150,11 @@ private:
 
     std::cout << "[VisualiseCobot6DoF] Loaded params from yaml file" << std::endl;
     std::cout << "pos_quat_f_tcp_: " << pos_quat_f_tcp_.pos.transpose() << ", " << pos_quat_f_tcp_.quat.w() << ", " << pos_quat_f_tcp_.quat.x() << ", " << pos_quat_f_tcp_.quat.y() << ", " << pos_quat_f_tcp_.quat.z() << std::endl;
+  }
+
+  void initControlParams()
+  {
+    quat_cmd_ = Quaterniond::Identity();
   }
 
   // Helper function to compute the D-H transformation
@@ -201,7 +202,7 @@ private:
     tf_broadcaster_->sendTransform(tf_msg);
   }
 
-  void updateIKParams()
+  void initCobotIK()
   {
     target_pose_ = Vector6d(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     robot_config_ = cga_ik_cobot_6dof::setRobotConfig(1, 1, 1);
