@@ -113,7 +113,7 @@ private:
     this->get_parameter("dh_j5", dh_j5_yaml);
     this->get_parameter("dh_j6", dh_j6_yaml);
 
-    // dh_table_ = cga_ik_cobot_6dof::loadDHTable();
+    // dh_table_ = cga_ik_cobot_6dof::loadTM5700DHTable();
     dh_table_ = DHTable({convertDHParams(dh_j1_yaml),
                          convertDHParams(dh_j2_yaml),
                          convertDHParams(dh_j3_yaml),

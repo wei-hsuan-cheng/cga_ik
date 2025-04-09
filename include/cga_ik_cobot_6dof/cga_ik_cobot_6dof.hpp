@@ -183,8 +183,8 @@ namespace cga_ik_cobot_6dof {
     // }
 
 
-    // Existing functions for loading the DH table and robot configuration.
-    static inline DHTable loadDHTable() {
+    // Loading the DH table for TM5-700
+    static inline DHTable loadTM5700DHTable() {
         double mm2m = 1e-3;
         DHParams dh_j1(Eigen::Vector4d(0, 0, 145.2 * mm2m, 0));
         DHParams dh_j2(Eigen::Vector4d(-M_PI / 2, 0, 0, -M_PI / 2));

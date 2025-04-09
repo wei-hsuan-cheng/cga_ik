@@ -11,7 +11,7 @@
 
 #include "cga/cga_utils.hpp"
 #include "cga_ik_spm_3dof/cga_ik_spm_3dof.hpp"
-#include "robot_math_utils/robot_math_utils_v1_9.hpp"
+#include "robot_math_utils/robot_math_utils_v1_10.hpp"
 
 using RM = RMUtils;
 
