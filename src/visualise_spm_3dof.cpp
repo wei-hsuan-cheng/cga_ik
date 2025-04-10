@@ -15,6 +15,12 @@
 
 using RM = RMUtils;
 
+struct TimeStampedPoint {
+  rclcpp::Time stamp;
+  geometry_msgs::msg::Point point;
+};
+
+
 class VisualiseSPM3DoF : public rclcpp::Node
 {
 public:
@@ -47,7 +53,9 @@ public:
     spm_utri_0_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_utri_0", qos);
     spm_utri_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_utri_1", qos);
     spm_utri_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_utri_2", qos);
-    light_ray_marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/spm_light_ray", qos);
+    light_ray_marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_light_ray", qos);
+
+    ept_traj_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/ept_traj", 10);
 
     RCLCPP_INFO(this->get_logger(), "visualise_spm_3dof node started.");
 
@@ -78,6 +86,9 @@ private:
     // Publisher for the light ray marker
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr light_ray_marker_pub_;
 
+    // Publisher for the trajectory marker
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr ept_traj_pub_;
+
     double fs_, Ts_;
     int k_;
     double t_;
@@ -87,14 +98,18 @@ private:
 
     float r_c_, ang_b_m_, r_b_, d_, r_e_;
     float r_s_piv_, r_s_m_, r_s_elb_, r_s_epl_;
+    float z_rot_cen_ee_;
     int krl_;
 
     CGA e_principal_, s_0_, s_1_;
     cga_ik_spm_3dof::SPM3DoFIKResult ik_result_;
 
     Vector4f pivot_sphere_color_, motor_sphere_color_, elbow_sphere_color_, epl_sphere_color_;
-    Vector4f utri_color_, ltri_color_, light_ray_color_;
-    float plate_thickness_;    
+    Vector4f utri_color_, ltri_color_, light_ray_color_, ept_traj_color_;
+
+    // For the trajectory
+    std::deque<TimeStampedPoint> trajectory_buffer_;
+    const double TRAIL_DURATION_SEC = 2.0; // keep last 2 seconds of EPT path
 
 
     void initTimeSpec()
@@ -152,8 +167,11 @@ private:
         CGA rot_e12 = cga_utils::rot(e1 * e2, ang_apart); // Rotate s_0_ by +-120 [deg] to get s_1_
         s_1_ = rot_e12 * s_0_ * ~rot_e12;
 
+        // End-effector z-offset
+        z_rot_cen_ee_ = 2.0f * r_s_m_;
+
         // IK solver for the spm
-        ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_c_, ang_b_m_, r_b_, d_, r_e_, r_s_piv_, r_s_m_, r_s_elb_, r_s_epl_,
+        ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_c_, ang_b_m_, r_b_, d_, r_e_, r_s_piv_, r_s_m_, r_s_elb_, r_s_epl_, z_rot_cen_ee_,
                                                        krl_,
                                                        e_principal_, s_0_, s_1_, 
                                                        Quaternionf::Identity());
@@ -202,6 +220,9 @@ private:
 
         // Light ray marker
         light_ray_color_ = Vector4f(0.0f, 0.0f, 1.0f, 0.7f);
+
+        // Traj color
+        ept_traj_color_ = Vector4f(1.0f, 0.0f, 1.0f, 0.7f);
     }
 
     void publishTF(
@@ -362,6 +383,37 @@ private:
         pub->publish(light_ray_marker);
     }
 
+    void publishTrajMarkerLineStrip(
+        const Vector4f rgba_color)
+    {
+        visualization_msgs::msg::Marker traj_marker;
+        traj_marker.header.stamp = current_time_;
+        traj_marker.header.frame_id = "spm_rot_cen";   // or "world" if you store ept in world coords
+        traj_marker.ns = "ept_traj";
+        traj_marker.id = 0;
+        traj_marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+        traj_marker.action = visualization_msgs::msg::Marker::ADD;
+
+        // thickness in meters
+        traj_marker.scale.x = 0.003; // e.g. 3mm wide
+
+        // color
+        traj_marker.color.r = rgba_color(0);
+        traj_marker.color.g = rgba_color(1);
+        traj_marker.color.b = rgba_color(2);
+        traj_marker.color.a = rgba_color(3);
+
+        // no lifetime needed, we manually remove old points from buffer
+        // for a fade effect, you can also do .lifetime = rclcpp::Duration(2,0)
+
+        // push the points
+        for (auto & tsp : trajectory_buffer_) {
+            traj_marker.points.push_back(tsp.point);
+        }
+
+        ept_traj_pub_->publish(traj_marker);
+    }
+
 
     void getTargetPose()
     {
@@ -385,7 +437,7 @@ private:
     void solveIK() 
     {
         // Call our CGA-based IK solver for the spm
-        ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_c_, ang_b_m_, r_b_, d_, r_e_, r_s_piv_, r_s_m_, r_s_elb_, r_s_epl_,
+        ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_c_, ang_b_m_, r_b_, d_, r_e_, r_s_piv_, r_s_m_, r_s_elb_, r_s_epl_, z_rot_cen_ee_,
                                                        krl_,
                                                        e_principal_, s_0_, s_1_, 
                                                        quat_cmd_);
@@ -434,18 +486,18 @@ private:
         // End-point on the pivot sphere
         publishTF(ik_result_.pos_rot_cen_ept, ik_result_.quat_rot_cen_ept, "spm_ept", "spm_rot_cen");
 
+        // End-effector
+        publishTF(ik_result_.pos_rot_cen_ee, ik_result_.quat_rot_cen_ee, "spm_ee", "spm_rot_cen");
+
         // Elbows
         publishTF(ik_result_.pos_rot_cen_elb_0, ik_result_.quat_rot_cen_elb_0, "spm_elbow_0", "spm_rot_cen");
         publishTF(ik_result_.pos_rot_cen_elb_1, ik_result_.quat_rot_cen_elb_1, "spm_elbow_1", "spm_rot_cen");
         publishTF(ik_result_.pos_rot_cen_elb_2, ik_result_.quat_rot_cen_elb_2, "spm_elbow_2", "spm_rot_cen");
 
-        // // (Optional) end-effector
-
-
     }
     
 
-    void publisherMarkers()
+    void publisherAllMarkers()
     {
         // Publish pivot sphere marker
         publishSphereMarker(
@@ -570,6 +622,29 @@ private:
                               Vector3f(0.0, 0.0, ik_result_.r_s_elb * 2.0f), // at spm_ept
                               light_ray_color_
                             );
+        
+        // Publish the trajectory line strip
+        // EE point to trajectory buffer
+        {
+            TimeStampedPoint new_pt;
+            new_pt.stamp = current_time_;
+            new_pt.point.x = ik_result_.pos_rot_cen_ee.x();
+            new_pt.point.y = ik_result_.pos_rot_cen_ee.y();
+            new_pt.point.z = ik_result_.pos_rot_cen_ee.z();
+            trajectory_buffer_.push_back(new_pt);
+
+            // Remove old points beyond TRAIL_DURATION_SEC
+            while (!trajectory_buffer_.empty())
+            {
+            double dt = (current_time_ - trajectory_buffer_.front().stamp).seconds();
+            if (dt > TRAIL_DURATION_SEC) {
+                trajectory_buffer_.pop_front();
+            } else {
+                break;
+            }
+            }
+        }
+        publishTrajMarkerLineStrip(ept_traj_color_);
 
 
     }
@@ -607,7 +682,7 @@ private:
         // Publish all TF frames:
         publishAllTransforms();
         // Publish markers
-        publisherMarkers();
+        publisherAllMarkers();
         // Debugging
         debuggingInfo();
     }

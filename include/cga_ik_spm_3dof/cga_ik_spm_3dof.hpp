@@ -157,6 +157,9 @@ struct SPM3DoFIKResult {
     Vector3f pos_rot_cen_epl_0, pos_rot_cen_epl_1, pos_rot_cen_epl_2, pos_rot_cen_epl_c, pos_rot_cen_ept; // end-plate corners and centre, and the end-point on the inner sphere
     Quaternionf quat_rot_cen_epl_0, quat_rot_cen_epl_1, quat_rot_cen_epl_2, quat_rot_cen_epl_c, quat_rot_cen_ept; // quaternions for end-plate corners and centre, and the end-point on the inner sphere
     
+    Vector3f pos_rot_cen_ee; // end-effector position
+    Quaternionf quat_rot_cen_ee; // end-effector quaternion orientation
+
     Vector3f pos_rot_cen_elb_0, pos_rot_cen_elb_1, pos_rot_cen_elb_2; // elbow positions
     Quaternionf quat_rot_cen_elb_0, quat_rot_cen_elb_1, quat_rot_cen_elb_2; // quaternions for elbow orientations
     
@@ -176,6 +179,7 @@ inline SPM3DoFIKResult computeSPM3DoFIK(
     const float &r_s_m,
     const float &r_s_elb,
     const float &r_s_epl,
+    const float &z_rot_cen_ee,
     const int &krl,
     // Principal axis of the 3-DoF spherical robot
     const CGA &e_principal,
@@ -257,6 +261,9 @@ inline SPM3DoFIKResult computeSPM3DoFIK(
     // End-point on the S_epl  (G3 vector)
     CGA pos_rot_cen_ept = r_s_epl * (pos_rot_cen_epl_c).normalized();
 
+    // End-effector position (G3 vector)
+    CGA pos_rot_cen_ee = z_rot_cen_ee * (pos_rot_cen_epl_c).normalized();
+
     // Construct the moving planes (p_0, p_1, p_2) (grade-4 planes)
     CGA p_0 = computeMovingPlanes(dir_offset_rot_cen_epl_0, R_rot_cen_ee, dir_rot_cen_epl_0, S);
     CGA p_1 = computeMovingPlanes(dir_offset_rot_cen_epl_1, R_rot_cen_ee, dir_rot_cen_epl_1, S);
@@ -286,6 +293,9 @@ inline SPM3DoFIKResult computeSPM3DoFIK(
     Quaternionf quat_rot_cen_epl_2 = computeEndPlateCornerQuat(pos_rot_cen_epl_2, pos_rot_cen_epl_c);
     Quaternionf quat_rot_cen_epl_c = target_quat_rot_cen_epl;
     Quaternionf quat_rot_cen_ept = target_quat_rot_cen_epl;
+
+    // Quaternion orientation for end-effector
+    Quaternionf quat_rot_cen_ee = target_quat_rot_cen_epl;
 
     // Quaternion orientation for each elbow
     Quaternionf quat_rot_cen_elb_0 = computeElbowQuat(pos_rot_cen_epl_0, pos_rot_cen_elb_0);
@@ -345,6 +355,9 @@ inline SPM3DoFIKResult computeSPM3DoFIK(
     result.quat_rot_cen_epl_2 = quat_rot_cen_epl_2;
     result.quat_rot_cen_epl_c = quat_rot_cen_epl_c;
     result.quat_rot_cen_ept = quat_rot_cen_ept;
+
+    result.pos_rot_cen_ee = cga_utils::G2R( pos_rot_cen_ee );
+    result.quat_rot_cen_ee = quat_rot_cen_ee;
 
     result.pos_rot_cen_elb_0 = cga_utils::G2R( pos_rot_cen_elb_0 );
     result.pos_rot_cen_elb_1 = cga_utils::G2R( pos_rot_cen_elb_1 );
