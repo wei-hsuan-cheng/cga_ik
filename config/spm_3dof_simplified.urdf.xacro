@@ -40,8 +40,8 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://cga_ik/meshes/spm_3dof/spm_base_plate.stl" 
-                      scale="${mm2m} ${mm2m} ${mm2m}"/>
+                <mesh filename="package://cga_ik/meshes/spm_3dof/base_plate.stl" 
+                      scale="${r_b} ${r_b} ${r_b}"/>
             </geometry>
             <material name="white" />
         </visual>
@@ -71,8 +71,10 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 ${pi}"/>
             <geometry>
-                <mesh filename="package://cga_ik/meshes/spm_3dof/spm_motor_link.stl" 
-                    scale="${mm2m} ${mm2m} ${mm2m}"/>
+                <mesh filename="package://cga_ik/meshes/spm_3dof/arc_link_thin.stl" 
+                    scale="${r_s_m} 
+                           ${r_s_m} 
+                           ${r_s_m}"/>
             </geometry>
             <material name="white" />
         </visual>
@@ -91,8 +93,10 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 ${pi}"/>
             <geometry>
-                <mesh filename="package://cga_ik/meshes/spm_3dof/spm_motor_link.stl" 
-                    scale="${mm2m} ${mm2m} ${mm2m}"/>
+                <mesh filename="package://cga_ik/meshes/spm_3dof/arc_link_thin.stl" 
+                    scale="${r_s_m} 
+                           ${r_s_m} 
+                           ${r_s_m}"/>
             </geometry>
             <material name="white" />
         </visual>
@@ -111,8 +115,10 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 ${pi}"/>
             <geometry>
-                <mesh filename="package://cga_ik/meshes/spm_3dof/spm_motor_link.stl" 
-                    scale="${mm2m} ${mm2m} ${mm2m}"/>
+                <mesh filename="package://cga_ik/meshes/spm_3dof/arc_link_thin.stl" 
+                    scale="${r_s_m} 
+                           ${r_s_m} 
+                           ${r_s_m}"/>
             </geometry>
             <material name="white" />
         </visual>
@@ -129,10 +135,12 @@
     <!-- elbow_0 -->
     <link name="spm_elbow_0">
         <visual>
-            <origin xyz="0 0 0" rpy="${pi} 0 0"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://cga_ik/meshes/spm_3dof/spm_elbow_link.stl" 
-                    scale="${mm2m} ${mm2m} ${mm2m}"/>
+                <mesh filename="package://cga_ik/meshes/spm_3dof/arc_link_thin.stl" 
+                    scale="${r_s_elb} 
+                           ${r_s_elb} 
+                           ${r_s_elb}"/>
             </geometry>
             <material name="white" />
         </visual>
@@ -149,10 +157,12 @@
     <!-- elbow_1 -->
     <link name="spm_elbow_1">
         <visual>
-            <origin xyz="0 0 0" rpy="${pi} 0 0"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://cga_ik/meshes/spm_3dof/spm_elbow_link.stl" 
-                    scale="${mm2m} ${mm2m} ${mm2m}"/>
+                <mesh filename="package://cga_ik/meshes/spm_3dof/arc_link_thin.stl" 
+                    scale="${r_s_elb} 
+                           ${r_s_elb} 
+                           ${r_s_elb}"/>
             </geometry>
             <material name="white" />
         </visual>
@@ -169,10 +179,12 @@
     <!-- elbow_2 -->
     <link name="spm_elbow_2">
         <visual>
-            <origin xyz="0 0 0" rpy="${pi} 0 0"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://cga_ik/meshes/spm_3dof/spm_elbow_link.stl" 
-                    scale="${mm2m} ${mm2m} ${mm2m}"/>
+                <mesh filename="package://cga_ik/meshes/spm_3dof/arc_link_thin.stl" 
+                    scale="${r_s_elb} 
+                           ${r_s_elb} 
+                           ${r_s_elb}"/>
             </geometry>
             <material name="white" />
         </visual>
@@ -191,8 +203,8 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://cga_ik/meshes/spm_3dof/spm_end_plate.stl" 
-                      scale="${mm2m} ${mm2m} ${mm2m}"/>
+                <mesh filename="package://cga_ik/meshes/spm_3dof/end_plate.stl" 
+                      scale="${r_e} ${r_e} ${r_e}"/>
             </geometry>
             <material name="white" />
         </visual>

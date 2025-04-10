@@ -22,19 +22,23 @@ def generate_launch_description():
     r_c_str = str(geometric_params.get("r_c"))
     ang_b_m_str = str(geometric_params.get("ang_b_m"))
     r_b_str = str(geometric_params.get("r_b"))
-    r_s_out_str = str(geometric_params.get("r_s_out"))
-    
     d_str = str(geometric_params.get("d"))
     r_e_str = str(geometric_params.get("r_e"))
-    r_s_in_str = str(geometric_params.get("r_s_in"))
     
+    r_s_piv_str = str(geometric_params.get("r_s_piv"))
+    r_s_m_str = str(geometric_params.get("r_s_m"))
     r_s_elb_str = str(geometric_params.get("r_s_elb"))
+    r_s_epl_str = str(geometric_params.get("r_s_epl"))
+    
+    krl = str(geometric_params.get("krl"))
 
     urdf_xacro_path = os.path.join(
         get_package_share_directory("cga_ik"),
         "config",
-        "spm_3dof.urdf.xacro"
+        "spm_3dof.urdf.xacro",
+        # "spm_3dof_simplified.urdf.xacro",
     )
+    
     if not os.path.exists(urdf_xacro_path):
         raise FileNotFoundError(f"URDF file not found at {urdf_xacro_path}")
 
@@ -49,13 +53,15 @@ def generate_launch_description():
             "r_c:=", r_c_str, " ",
             "ang_b_m:=", ang_b_m_str, " ",
             "r_b:=", r_b_str, " ",
-            "r_s_out:=", r_s_out_str, " ",
-            
             "d:=", d_str, " ",
             "r_e:=", r_e_str, " ",
-            "r_s_in:=", r_s_in_str, " ",
             
+            "r_s_piv:=", r_s_piv_str, " ",
+            "r_s_m:=", r_s_m_str, " ",
             "r_s_elb:=", r_s_elb_str, " ",
+            "r_s_epl:=", r_s_epl_str, " ",
+            
+            "krl:=", krl, " ",
         ]
     )
     

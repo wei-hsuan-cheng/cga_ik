@@ -103,16 +103,17 @@ CGA computeMovingPlanes(const CGA &x, const CGA &R_rot_cen_ee, const CGA &pos_rc
 }
 
 // Helper: compute the elbow positions.
-CGA computeElbowPositions(const CGA &a, const CGA &p, const CGA &S)
+CGA computeElbowPositions(const CGA &a, const CGA &p, const CGA &S, const int &krl = 1)
 {
-    // Intersect the circles for the elbows
+    // Intersect the circles for the elbow point pair
     CGA T_full = (a & p) & S;
     CGA T_graded = Grade(T_full, 2);
     CGA T = T_graded.normalized();
-    float T_sqVal = (T*T)[0];
-    float invLen_T = 1.0f / std::sqrt(std::fabs(T_sqVal));
 
-    return down( (CGA(1.0f,0) + T * invLen_T) * (T | ni) ); // G41 vector -> G3 vector
+    // Extract each point in the point pair by method of projectors
+    float invLen_T = 1.0f / std::sqrt((T * T)[0]);
+    CGA elb_g41 = (CGA(1.0f,0) + krl * T * invLen_T) * (T | ni); // krl: +1 for right, -1 for left
+    return down(elb_g41); // G41 vector -> G3 vector
 }
 
 // Helper: compute the quaternion orientation of the elbow.
@@ -136,7 +137,8 @@ float computeRelativeZAngle(const Quaternionf & quat_0_1, const Quaternionf & qu
 
 // This struct holds the final output of the single-orientation IK.
 struct SPM3DoFIKResult {
-    float r_s_out, r_s_in, d;
+    float r_s_piv, r_s_m, r_s_elb, r_s_epl; // radii of the spheres
+    float d;
     
     // Relative poses w.r.t the base
     Vector3f pos_base_rot_cen;      // rotation centre position w.r.t. base
@@ -168,10 +170,13 @@ inline SPM3DoFIKResult computeSPM3DoFIK(
     const float &r_c,
     const float &ang_b_m,
     const float &r_b,
-    const float &r_s_out,
     const float &d,
     const float &r_e,
-    const float &r_s_in,
+    const float &r_s_piv,
+    const float &r_s_m,
+    const float &r_s_elb,
+    const float &r_s_epl,
+    const int &krl,
     // Principal axis of the 3-DoF spherical robot
     const CGA &e_principal,
     // Two basis vectors on the base plane
@@ -183,18 +188,20 @@ inline SPM3DoFIKResult computeSPM3DoFIK(
 
     // Start with constructing the “fixed” spheres about the rotation centre
     // Unit sphere S with radius of 1 about rot_cen (grade-4 sphere)
-    // Outer sphere S_out with radius of r_s_out about rot_cen (grade-4 sphere)
-    // Inner sphere S_in with radius of r_s_in about rot_cen (grade-4 sphere)
+    // Motor sphere S_m with radius of r_s_m about rot_cen (grade-4 sphere)
+    // Elbow sphere S_elb with radius of r_s_elb about rot_cen (grade-4 sphere)
+    // End-plate sphere S_epl with radius of r_s_epl about rot_cen (grade-4 sphere)
     CGA S = sphere(1.0f, down(no), 4);
-    CGA S_out = sphere(r_s_out, down(no), 4);
-    CGA S_in = sphere(r_s_in, down(no), 4);  
+    CGA S_m = sphere(r_s_m, down(no), 4);
+    CGA S_elb = sphere(r_s_elb, down(no), 4);
+    CGA S_epl = sphere(r_s_epl, down(no), 4);
 
     // Rotation centre position w.r.t. base
     CGA pos_base_rot_cen = r_c * e_principal; // Rotation centre position w.r.t. base
     Quaternionf quat_base_rot_cen = Quaternionf::Identity(); 
     
-    // Rotation centre position w.r.t. up-shifted base
-    float r_c_prime = r_s_in * std::cos(ang_b_m * RM::d2r);
+    // Rotation centre position w.r.t. up-shifted base (shifted to intersect with the end-plate sphere)
+    float r_c_prime = r_s_epl * std::cos(ang_b_m * RM::d2r);
     CGA pos_ubase_rot_cen = r_c_prime * e_principal; // Rotation centre position w.r.t. up-shifted base
     Quaternionf quat_ubase_rot_cen = Quaternionf::Identity(); 
 
@@ -206,13 +213,13 @@ inline SPM3DoFIKResult computeSPM3DoFIK(
     CGA dir_rot_cen_m_1 = (r_b * s_1 - pos_base_rot_cen).normalized();
     CGA dir_rot_cen_m_2 = (r_b * s_2 - pos_base_rot_cen).normalized();
     // Pivot positions (G3 vectors)
-    CGA pos_rot_cen_piv_0 = r_s_out * dir_rot_cen_m_0;
-    CGA pos_rot_cen_piv_1 = r_s_out * dir_rot_cen_m_1;
-    CGA pos_rot_cen_piv_2 = r_s_out * dir_rot_cen_m_2;
+    CGA pos_rot_cen_piv_0 = r_s_piv * dir_rot_cen_m_0;
+    CGA pos_rot_cen_piv_1 = r_s_piv * dir_rot_cen_m_1;
+    CGA pos_rot_cen_piv_2 = r_s_piv * dir_rot_cen_m_2;
     // Motor positions (G3 vectors)
-    CGA pos_rot_cen_m_0 = r_s_in * dir_rot_cen_m_0;
-    CGA pos_rot_cen_m_1 = r_s_in * dir_rot_cen_m_1;
-    CGA pos_rot_cen_m_2 = r_s_in * dir_rot_cen_m_2;
+    CGA pos_rot_cen_m_0 = r_s_m * dir_rot_cen_m_0;
+    CGA pos_rot_cen_m_1 = r_s_m * dir_rot_cen_m_1;
+    CGA pos_rot_cen_m_2 = r_s_m * dir_rot_cen_m_2;
 
 
     // Construct the “fixed” planes (a_0, a_1, a_2) (grade-4 planes)
@@ -227,38 +234,38 @@ inline SPM3DoFIKResult computeSPM3DoFIK(
     Vector3f zyx_euler = RM::Quat2zyxEuler( target_quat_rot_cen_epl.cast<double>() ).cast<float>();
     CGA R_rot_cen_ee = zyxEuler2Rotor(zyx_euler);
 
-    // Positions of the end-plate corners that lie on S_in (G3 vectors)
+    // Positions of the end-plate corners that lie on S_epl (G3 vectors)
     CGA dir_offset_rot_cen_epl_0 = computeEndPlateCornerOffsetDirection(r_e, s_0, d, e_principal); // invariant
-    CGA offset_rot_cen_epl_0 = r_s_in * dir_offset_rot_cen_epl_0;
+    CGA offset_rot_cen_epl_0 = r_s_epl * dir_offset_rot_cen_epl_0;
     CGA dir_rot_cen_epl_0 = computeEndPlateCornerDirection(dir_offset_rot_cen_epl_0, R_rot_cen_ee);
-    CGA pos_rot_cen_epl_0 = r_s_in * dir_rot_cen_epl_0;
+    CGA pos_rot_cen_epl_0 = r_s_epl * dir_rot_cen_epl_0;
 
     CGA dir_offset_rot_cen_epl_1 = computeEndPlateCornerOffsetDirection(r_e, s_1, d, e_principal);
-    CGA offset_rot_cen_epl_1 = r_s_in * dir_offset_rot_cen_epl_1;
+    CGA offset_rot_cen_epl_1 = r_s_epl * dir_offset_rot_cen_epl_1;
     CGA dir_rot_cen_epl_1 = computeEndPlateCornerDirection(dir_offset_rot_cen_epl_1, R_rot_cen_ee);
-    CGA pos_rot_cen_epl_1 = r_s_in * dir_rot_cen_epl_1;
+    CGA pos_rot_cen_epl_1 = r_s_epl * dir_rot_cen_epl_1;
 
     CGA dir_offset_rot_cen_epl_2 = computeEndPlateCornerOffsetDirection(r_e, s_2, d, e_principal);
-    CGA offset_rot_cen_epl_2 = r_s_in * dir_offset_rot_cen_epl_2;
+    CGA offset_rot_cen_epl_2 = r_s_epl * dir_offset_rot_cen_epl_2;
     CGA dir_rot_cen_epl_2 = computeEndPlateCornerDirection(dir_offset_rot_cen_epl_2, R_rot_cen_ee);
-    CGA pos_rot_cen_epl_2 = r_s_in * dir_rot_cen_epl_2;
+    CGA pos_rot_cen_epl_2 = r_s_epl * dir_rot_cen_epl_2;
 
 
     // End-plate centre (G3 vector)
     CGA pos_rot_cen_epl_c = computeEndPlateCentrePosition(pos_rot_cen_epl_0, R_rot_cen_ee, r_e, s_0);
 
-    // End-point on the S_in  (G3 vector)
-    CGA pos_rot_cen_ept = r_s_in * (pos_rot_cen_epl_c).normalized();
+    // End-point on the S_epl  (G3 vector)
+    CGA pos_rot_cen_ept = r_s_epl * (pos_rot_cen_epl_c).normalized();
 
     // Construct the moving planes (p_0, p_1, p_2) (grade-4 planes)
     CGA p_0 = computeMovingPlanes(dir_offset_rot_cen_epl_0, R_rot_cen_ee, dir_rot_cen_epl_0, S);
     CGA p_1 = computeMovingPlanes(dir_offset_rot_cen_epl_1, R_rot_cen_ee, dir_rot_cen_epl_1, S);
     CGA p_2 = computeMovingPlanes(dir_offset_rot_cen_epl_2, R_rot_cen_ee, dir_rot_cen_epl_2, S);
 
-    // Compute the elbow positions that lie on S_in (G3 vectors)
-    CGA pos_rot_cen_elb_0 = computeElbowPositions(a_0, p_0, S_in);
-    CGA pos_rot_cen_elb_1 = computeElbowPositions(a_1, p_1, S_in);
-    CGA pos_rot_cen_elb_2 = computeElbowPositions(a_2, p_2, S_in);
+    // Compute the elbow positions that lie on S_elb (G3 vectors)
+    CGA pos_rot_cen_elb_0 = computeElbowPositions(a_0, p_0, S_elb, krl); // krl: +1 for right elbow, -1 for left elbow
+    CGA pos_rot_cen_elb_1 = computeElbowPositions(a_1, p_1, S_elb, krl);
+    CGA pos_rot_cen_elb_2 = computeElbowPositions(a_2, p_2, S_elb, krl);
 
     // Quaternion orientation for each pivot
     Quaternionf quat_rot_cen_piv_0 = computeMotorInitalQuat(pos_base_rot_cen, pos_rot_cen_piv_0);
@@ -296,8 +303,10 @@ inline SPM3DoFIKResult computeSPM3DoFIK(
     SPM3DoFIKResult result;
 
     // Spherical robot geometry parameters
-    result.r_s_out = r_s_out;
-    result.r_s_in = r_s_in;
+    result.r_s_piv = r_s_piv;
+    result.r_s_m = r_s_m;
+    result.r_s_elb = r_s_elb;
+    result.r_s_epl = r_s_epl;
     result.d = d;
 
     // Relative poses w.r.t the base centre frame

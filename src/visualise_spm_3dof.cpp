@@ -37,8 +37,10 @@ public:
     angles_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/spm_3dof/joint_states", 10);
     
     auto qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable();
-    spm_outer_sphere_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_outer_sphere", qos);
-    spm_inner_sphere_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_inner_sphere", qos);
+    spm_pivot_sphere_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_pivot_sphere", qos);
+    spm_motor_sphere_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_motor_sphere", qos);
+    spm_elbow_sphere_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_elbow_sphere", qos);
+    spm_epl_sphere_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_epl_sphere", qos);
     spm_ltri_0_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_ltri_0", qos);
     spm_ltri_1_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_ltri_1", qos);
     spm_ltri_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_ltri_2", qos);
@@ -60,8 +62,10 @@ private:
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr angles_pub_;
 
     // Publisher for the sphere marker
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spm_outer_sphere_pub_;
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spm_inner_sphere_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spm_pivot_sphere_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spm_motor_sphere_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spm_elbow_sphere_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spm_epl_sphere_pub_;
 
     // Publisher for the triangle marker
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spm_ltri_0_pub_;
@@ -81,12 +85,14 @@ private:
 
     Quaternionf quat_cmd_;
 
-    float r_c_, ang_b_m_, r_b_, r_s_out_, d_, r_e_, r_s_in_;
+    float r_c_, ang_b_m_, r_b_, d_, r_e_;
+    float r_s_piv_, r_s_m_, r_s_elb_, r_s_epl_;
+    int krl_;
 
     CGA e_principal_, s_0_, s_1_;
     cga_ik_spm_3dof::SPM3DoFIKResult ik_result_;
 
-    Vector4f outer_sphere_color_, inner_sphere_color_;
+    Vector4f pivot_sphere_color_, motor_sphere_color_, elbow_sphere_color_, epl_sphere_color_;
     Vector4f utri_color_, ltri_color_, light_ray_color_;
     float plate_thickness_;    
 
@@ -112,31 +118,44 @@ private:
         this->declare_parameter<float>("r_c", 1.0);
         this->declare_parameter<float>("ang_b_m", 0.0);
         this->declare_parameter<float>("r_b", 1.0);
-        this->declare_parameter<float>("r_s_out", 1.0);
         this->declare_parameter<float>("d", 1.0);
         this->declare_parameter<float>("r_e", 1.0);
-        this->declare_parameter<float>("r_s_in", 1.0);
+
+        this->declare_parameter<float>("r_s_piv", 1.0);
+        this->declare_parameter<float>("r_s_m", 1.0);
+        this->declare_parameter<float>("r_s_elb", 1.0);
+        this->declare_parameter<float>("r_s_epl", 1.0);
+
+        this->declare_parameter<int>("krl", 1);
 
         this->get_parameter("r_c", r_c_);
         this->get_parameter("ang_b_m", ang_b_m_);
         this->get_parameter("r_b", r_b_);
-        this->get_parameter("r_s_out", r_s_out_);
         this->get_parameter("d", d_);
         this->get_parameter("r_e", r_e_);
-        this->get_parameter("r_s_in", r_s_in_);
+
+        this->get_parameter("r_s_piv", r_s_piv_);
+        this->get_parameter("r_s_m", r_s_m_);
+        this->get_parameter("r_s_elb", r_s_elb_);
+        this->get_parameter("r_s_epl", r_s_epl_);
+        this->get_parameter("krl", krl_);
+        
 
         // SPM coordinate system
         // Principal axis of the 3-DoF spm
         e_principal_ = e3;
+
         // Each motor position is set in the base plane, separated by 120 [deg].
         s_0_ = e1;
-        CGA rot_e12_120 = cga_utils::rot(e1 * e2, (float) (2.0 * M_PI / 3.0)); // Rotate s_0_ by 120 degrees to get s_1_
+        float ang_apart = 2.0 * M_PI / 3.0; // +120 [deg]
+        // float ang_apart = -2.0 * M_PI / 3.0; // -120 [deg]
+        CGA rot_e12_120 = cga_utils::rot(e1 * e2, ang_apart); // Rotate s_0_ by +-120 [deg] to get s_1_
         s_1_ = rot_e12_120 * s_0_ * ~rot_e12_120;
 
         // IK solver for the spm
-        ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_c_, ang_b_m_, r_b_, r_s_out_, d_, r_e_, r_s_in_,
-                                                       e_principal_, 
-                                                       s_0_, s_1_, 
+        ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_c_, ang_b_m_, r_b_, d_, r_e_, r_s_piv_, r_s_m_, r_s_elb_, r_s_epl_,
+                                                       krl_,
+                                                       e_principal_, s_0_, s_1_, 
                                                        Quaternionf::Identity());
 
         
@@ -148,10 +167,9 @@ private:
         std::cout << "r_c = " << r_c_ << std::endl;
         std::cout << "ang_b_m = " << ang_b_m_ << std::endl;
         std::cout << "r_b = " << r_b_ << std::endl;
-        std::cout << "r_s_out = " << r_s_out_ << std::endl;
+        std::cout << "r_s_piv = " << r_s_piv_ << std::endl;
         std::cout << "d = " << d_ << std::endl;
         std::cout << "r_e = " << r_e_ << std::endl;
-        std::cout << "r_s_in = " << r_s_in_ << std::endl;
 
         std::cout << "--------------------------------------------------------------" << std::endl;
         
@@ -170,11 +188,17 @@ private:
 
     void initRobotVisual()
     {
-        // Outer sphere
-        outer_sphere_color_ = Vector4f(0.0f, 1.0f, 0.0f, 0.15f);
+        // Pivot sphere
+        pivot_sphere_color_ = Vector4f(1.0f, 0.0f, 1.0f, 0.15f);
 
-        // Inner sphere
-        inner_sphere_color_ = Vector4f(1.0f, 0.0f, 0.0f, 0.15f);
+        // Motor sphere
+        motor_sphere_color_ = Vector4f(0.0f, 0.0f, 1.0f, 0.15f);
+
+        // Elbow sphere
+        elbow_sphere_color_ = Vector4f(0.0f, 1.0f, 0.0f, 0.15f);
+
+        // End-plate sphere
+        epl_sphere_color_ = Vector4f(1.0f, 0.0f, 0.0f, 0.15f);
 
         // Triangles
         utri_color_ = Vector4f(0.0f, 0.0f, 1.0f, 0.8f);
@@ -365,9 +389,9 @@ private:
     void solveIK() 
     {
         // Call our CGA-based IK solver for the spm
-        ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_c_, ang_b_m_, r_b_, r_s_out_, d_, r_e_, r_s_in_,
-                                                       e_principal_, 
-                                                       s_0_, s_1_, 
+        ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_c_, ang_b_m_, r_b_, d_, r_e_, r_s_piv_, r_s_m_, r_s_elb_, r_s_epl_,
+                                                       krl_,
+                                                       e_principal_, s_0_, s_1_, 
                                                        quat_cmd_);
         
     }
@@ -411,7 +435,7 @@ private:
         publishTF(ik_result_.pos_rot_cen_epl_2, ik_result_.quat_rot_cen_epl_2, "spm_epl_2", "spm_rot_cen");
         publishTF(ik_result_.pos_rot_cen_epl_c, ik_result_.quat_rot_cen_epl_c, "spm_epl_c", "spm_rot_cen");
 
-        // End-point on the outer sphere
+        // End-point on the pivot sphere
         publishTF(ik_result_.pos_rot_cen_ept, ik_result_.quat_rot_cen_ept, "spm_ept", "spm_rot_cen");
 
         // Elbows
@@ -420,34 +444,55 @@ private:
         publishTF(ik_result_.pos_rot_cen_elb_2, ik_result_.quat_rot_cen_elb_2, "spm_elbow_2", "spm_rot_cen");
 
         // // (Optional) end-effector
-        // Vector3f pos_yc_ee = (ik_result_.r_s_in - ik_result_.d) * cga_utils::G2R(e_principal_);
-        // publishTF(pos_yc_ee, Quaternionf::Identity(), "spm_ee", "spm_epl_c");
+
 
     }
     
 
     void publisherMarkers()
     {
-        // Publish outer sphere marker
+        // Publish pivot sphere marker
         publishSphereMarker(
-            spm_outer_sphere_pub_,
+            spm_pivot_sphere_pub_,
             0,                // marker_id
-            "spm_outer_sphere",         // ns
+            "spm_pivot_sphere",         // ns
             "spm_rot_cen",       // frame_id
-            ik_result_.r_s_out,
+            ik_result_.r_s_piv,
             Vector3f::Zero(), // at rot_cen
-            outer_sphere_color_ // RGBA
+            pivot_sphere_color_ // RGBA
         );
 
-        // Publish inner sphere marker
+        // Publish motor sphere marker
         publishSphereMarker(
-            spm_inner_sphere_pub_,
+            spm_motor_sphere_pub_,
             0,                // marker_id
-            "spm_inner_sphere",         // ns
+            "spm_motor_sphere",         // ns
             "spm_rot_cen",       // frame_id
-            ik_result_.r_s_in,
+            ik_result_.r_s_m,
             Vector3f::Zero(), // at rot_cen
-            inner_sphere_color_ // RGBA
+            motor_sphere_color_ // RGBA
+        );
+
+        // Publish elbow sphere marker
+        publishSphereMarker(
+            spm_elbow_sphere_pub_,
+            0,                // marker_id
+            "spm_elbow_sphere",         // ns
+            "spm_rot_cen",       // frame_id
+            ik_result_.r_s_elb,
+            Vector3f::Zero(), // at rot_cen
+            elbow_sphere_color_ // RGBA
+        );
+
+        // Publish end-plate sphere marker
+        publishSphereMarker(
+            spm_epl_sphere_pub_,
+            0,                // marker_id
+            "spm_epl_sphere",         // ns
+            "spm_rot_cen",       // frame_id
+            ik_result_.r_s_epl,
+            Vector3f::Zero(), // at rot_cen
+            epl_sphere_color_ // RGBA
         );
 
         // Publish triangle markers
@@ -526,7 +571,7 @@ private:
                               "spm_light_ray",         // ns
                               "spm_ept",       // frame_id
                               Vector3f::Zero(), // at rot_cen
-                              Vector3f(0.0, 0.0, ik_result_.r_s_in * 2.0f), // at spm_ept
+                              Vector3f(0.0, 0.0, ik_result_.r_s_elb * 2.0f), // at spm_ept
                               light_ray_color_
                             );
 
@@ -538,8 +583,8 @@ private:
         // // Compute the are of the end-plate triangle
 
         // // Compare the lengths
-        // std::cout << "(Outer sphere radius) r_s_out = d_rc_elb_i = " << ik_result_.r_s_out << std::endl;
-        // std::cout << "(Inner sphere radius) r_s_in = d_rc_elp_i = " << ik_result_.r_s_in << std::endl;
+        // std::cout << "(Pivot sphere radius) r_s_piv = d_rc_elb_i = " << ik_result_.r_s_piv << std::endl;
+        // std::cout << "(Elbow sphere radius) r_s_elb = d_rc_elp_i = " << ik_result_.r_s_elb << std::endl;
         // std::cout << "d = d_rc_yc = " << ik_result_.d << std::endl;
 
 
