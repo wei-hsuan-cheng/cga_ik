@@ -16,6 +16,8 @@
     <xacro:arg name="r_s_elb" default="1.0" />
     <xacro:arg name="r_s_epl" default="1.0" />
 
+    <xacro:arg name="th_z_ee_init" default="1.0" />
+
     <!-- Convert them into xacro properties: -->
     <xacro:property name="mm2m" value="0.001" />
 
@@ -29,6 +31,8 @@
     <xacro:property name="r_s_m" value="$(arg r_s_m)" />
     <xacro:property name="r_s_elb" value="$(arg r_s_elb)" />
     <xacro:property name="r_s_epl" value="$(arg r_s_epl)" />
+
+    <xacro:property name="th_z_ee_init" value="$(arg th_z_ee_init)" />
     
 
     <!-- world -->

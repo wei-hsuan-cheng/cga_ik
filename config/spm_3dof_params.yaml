@@ -21,3 +21,6 @@ geometric_params:
 
   # Elbow configuration
   krl: -1 # +1 for right elbow; -1 for left elbow
+
+  # Initial z-rotation for re-origining the coordinate system (mechanical origin -> geometric origin)
+  th_z_ee_init: -60.0

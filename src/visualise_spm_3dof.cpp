@@ -94,6 +94,8 @@ private:
     double t_;
     rclcpp::Time current_time_;
 
+    double th_z_ee_init_;
+    Vector4d axis_ang_cmd_;
     Quaternionf quat_cmd_;
 
     float r_c_, ang_b_m_, r_b_, d_, r_e_;
@@ -122,11 +124,7 @@ private:
     }
 
     void initSPMIK()
-    {
-        // IK target pose (quaternion orientation)
-        quat_cmd_ = Quaternionf::Identity();
-
-        
+    {   
         // SPM geometries
         // Load geometric params from yaml file
         // Declare default parameters (in case the YAML file doesn't provide them)
@@ -154,6 +152,16 @@ private:
         this->get_parameter("r_s_elb", r_s_elb_);
         this->get_parameter("r_s_epl", r_s_epl_);
         this->get_parameter("krl", krl_);
+
+        // Initial z-rotation for re-origining the coordinate system (mechanical origin -> geometric origin)
+        this->declare_parameter<double>("th_z_ee_init", 0.0);
+        this->get_parameter("th_z_ee_init", th_z_ee_init_);
+
+        // Initial IK target pose (quaternion orientation)
+        // axis_ang_cmd_ = Vector4d(0.0, 0.0, 1.0, th_z_ee_init_ * RM::d2r);
+        // Vector3d so3 = (axis_ang_cmd_.head(3)).normalized() * axis_ang_cmd_(3);
+        // quat_cmd_ = RM::so32Quat(so3).cast<float>();
+        quat_cmd_ = RM::Quatz(th_z_ee_init_ * RM::d2r).cast<float>();
         
 
         // SPM coordinate system
@@ -174,7 +182,7 @@ private:
         ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_c_, ang_b_m_, r_b_, d_, r_e_, r_s_piv_, r_s_m_, r_s_elb_, r_s_epl_, z_rot_cen_ee_,
                                                        krl_,
                                                        e_principal_, s_0_, s_1_, 
-                                                       Quaternionf::Identity());
+                                                       quat_cmd_);
 
         
         // Print robot geometric parameters
@@ -196,6 +204,9 @@ private:
         std::cout << "r_s_m = " << r_s_m_ << std::endl;
         std::cout << "r_s_elb = " << r_s_elb_ << std::endl;
         std::cout << "r_s_epl = " << r_s_epl_ << std::endl;
+
+        std::cout << "th_z_ee_init = " << th_z_ee_init_ << std::endl;
+        std::cout << "th_0_init, th_1_init, th_2_init = " << ik_result_.th_0 * RM::r2d << ", " << ik_result_.th_1 * RM::r2d << ", " << ik_result_.th_2 * RM::r2d << std::endl;
 
         std::cout << "--------------------------------------------------------------" << std::endl;
     }
@@ -386,6 +397,27 @@ private:
     void publishTrajMarkerLineStrip(
         const Vector4f rgba_color)
     {
+        // EE point to trajectory buffer
+        {
+            TimeStampedPoint new_pt;
+            new_pt.stamp = current_time_;
+            new_pt.point.x = ik_result_.pos_rot_cen_ee.x();
+            new_pt.point.y = ik_result_.pos_rot_cen_ee.y();
+            new_pt.point.z = ik_result_.pos_rot_cen_ee.z();
+            trajectory_buffer_.push_back(new_pt);
+
+            // Remove old points beyond TRAIL_DURATION_SEC
+            while (!trajectory_buffer_.empty())
+            {
+            double dt = (current_time_ - trajectory_buffer_.front().stamp).seconds();
+            if (dt > TRAIL_DURATION_SEC) {
+                trajectory_buffer_.pop_front();
+            } else {
+                break;
+            }
+            }
+        }
+
         visualization_msgs::msg::Marker traj_marker;
         traj_marker.header.stamp = current_time_;
         traj_marker.header.frame_id = "spm_rot_cen";   // or "world" if you store ept in world coords
@@ -422,15 +454,18 @@ private:
         t_ = k_ * Ts_;
 
         // Target orientation for the IK problem
-        float freq = 0.1;
-        float th = (0.25 * M_PI) * std::sin(2.0 * M_PI * freq * t_);
-        // float th = 0.0;
+        double th = th_z_ee_init_;
 
-        // Vector4d axis_ang(0.0, 0.0, 1.0, (double) th);
-        Vector4d axis_ang(0.0, 1.0, 0.0, (double) th);
-        // Vector4d axis_ang(1.0, 0.0, 0.0, (double) th);
+        // double freq = 0.1;
+        // double th = th_z_ee_init_ * std::sin(2.0 * M_PI * freq * t_);
 
-        Vector3d so3 = (axis_ang.head(3)).normalized() * axis_ang(3);
+        // double th = 0.0;
+
+        axis_ang_cmd_ = Vector4d(0.0, 0.0, 1.0, th);
+        // axis_ang_cmd_ = Vector4d(0.0, 1.0, 0.0, th);
+        // axis_ang_cmd_ = Vector4d(1.0, 0.0, 0.0, th);
+
+        Vector3d so3 = (axis_ang_cmd_.head(3)).normalized() * axis_ang_cmd_(3) * RM::d2r;
         quat_cmd_ = RM::so32Quat(so3).cast<float>();
     }
 
@@ -624,26 +659,6 @@ private:
                             );
         
         // Publish the trajectory line strip
-        // EE point to trajectory buffer
-        {
-            TimeStampedPoint new_pt;
-            new_pt.stamp = current_time_;
-            new_pt.point.x = ik_result_.pos_rot_cen_ee.x();
-            new_pt.point.y = ik_result_.pos_rot_cen_ee.y();
-            new_pt.point.z = ik_result_.pos_rot_cen_ee.z();
-            trajectory_buffer_.push_back(new_pt);
-
-            // Remove old points beyond TRAIL_DURATION_SEC
-            while (!trajectory_buffer_.empty())
-            {
-            double dt = (current_time_ - trajectory_buffer_.front().stamp).seconds();
-            if (dt > TRAIL_DURATION_SEC) {
-                trajectory_buffer_.pop_front();
-            } else {
-                break;
-            }
-            }
-        }
         publishTrajMarkerLineStrip(ee_traj_color_);
 
 

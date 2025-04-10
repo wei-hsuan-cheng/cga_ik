@@ -31,6 +31,8 @@ def generate_launch_description():
     r_s_epl_str = str(geometric_params.get("r_s_epl"))
     
     krl = str(geometric_params.get("krl"))
+    
+    th_z_ee_init = str(geometric_params.get("th_z_ee_init"))
 
     urdf_xacro_path = os.path.join(
         get_package_share_directory("cga_ik"),
@@ -62,6 +64,8 @@ def generate_launch_description():
             "r_s_epl:=", r_s_epl_str, " ",
             
             "krl:=", krl, " ",
+            
+            "th_z_ee_init:=", th_z_ee_init, " ",
         ]
     )
     
