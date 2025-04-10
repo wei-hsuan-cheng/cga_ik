@@ -12,5 +12,4 @@ geometric_params:
   r_s_epl: 0.084
 
   # Left elbow or right elbow
-  # krl: +1 for right elbow -1 for left elbow
-  krl: -1
+  krl: -1 # +1 for right elbow; -1 for left elbow
