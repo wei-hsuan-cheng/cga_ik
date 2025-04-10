@@ -55,7 +55,7 @@ public:
     spm_utri_2_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_utri_2", qos);
     light_ray_marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/spm_light_ray", qos);
 
-    ept_traj_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/ept_traj", 10);
+    ee_traj_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/spm_3dof/markers/ee_traj", 10);
 
     RCLCPP_INFO(this->get_logger(), "visualise_spm_3dof node started.");
 
@@ -87,7 +87,7 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr light_ray_marker_pub_;
 
     // Publisher for the trajectory marker
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr ept_traj_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr ee_traj_pub_;
 
     double fs_, Ts_;
     int k_;
@@ -105,7 +105,7 @@ private:
     cga_ik_spm_3dof::SPM3DoFIKResult ik_result_;
 
     Vector4f pivot_sphere_color_, motor_sphere_color_, elbow_sphere_color_, epl_sphere_color_;
-    Vector4f utri_color_, ltri_color_, light_ray_color_, ept_traj_color_;
+    Vector4f utri_color_, ltri_color_, light_ray_color_, ee_traj_color_;
 
     // For the trajectory
     std::deque<TimeStampedPoint> trajectory_buffer_;
@@ -222,7 +222,7 @@ private:
         light_ray_color_ = Vector4f(0.0f, 0.0f, 1.0f, 0.7f);
 
         // Traj color
-        ept_traj_color_ = Vector4f(1.0f, 0.0f, 1.0f, 0.7f);
+        ee_traj_color_ = Vector4f(1.0f, 0.0f, 1.0f, 0.7f);
     }
 
     void publishTF(
@@ -389,7 +389,7 @@ private:
         visualization_msgs::msg::Marker traj_marker;
         traj_marker.header.stamp = current_time_;
         traj_marker.header.frame_id = "spm_rot_cen";   // or "world" if you store ept in world coords
-        traj_marker.ns = "ept_traj";
+        traj_marker.ns = "ee_traj";
         traj_marker.id = 0;
         traj_marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
         traj_marker.action = visualization_msgs::msg::Marker::ADD;
@@ -411,7 +411,7 @@ private:
             traj_marker.points.push_back(tsp.point);
         }
 
-        ept_traj_pub_->publish(traj_marker);
+        ee_traj_pub_->publish(traj_marker);
     }
 
 
@@ -644,7 +644,7 @@ private:
             }
             }
         }
-        publishTrajMarkerLineStrip(ept_traj_color_);
+        publishTrajMarkerLineStrip(ee_traj_color_);
 
 
     }
