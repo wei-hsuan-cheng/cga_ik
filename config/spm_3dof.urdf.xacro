@@ -9,17 +9,24 @@
     <xacro:arg name="ang_b_m" default="1.0" />
     <xacro:arg name="r_b" default="1.0" />
     <xacro:arg name="r_s_out" default="1.0" />
+
     <xacro:arg name="d" default="1.0" />
     <xacro:arg name="r_e" default="1.0" />
     <xacro:arg name="r_s_in" default="1.0" />
+
+    <xacro:arg name="r_s_elb" default="1.0" />
+    
     <!-- Convert them into xacro properties: -->
     <xacro:property name="r_c" value="$(arg r_c)" />
     <xacro:property name="ang_b_m" value="$(arg ang_b_m)" />
     <xacro:property name="r_b" value="$(arg r_b)" />
     <xacro:property name="r_s_out" value="$(arg r_s_out)" />
+    
     <xacro:property name="d" value="$(arg d)" />
     <xacro:property name="r_e" value="$(arg r_e)" />
     <xacro:property name="r_s_in" value="$(arg r_s_in)" />
+
+    <xacro:property name="r_s_elb" value="$(arg r_s_elb)" />
     
 
     <!-- world -->
@@ -131,9 +138,9 @@
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
                 <mesh filename="package://cga_ik/meshes/arc_link_thin.stl" 
-                    scale="${r_s_in} 
-                           ${r_s_in} 
-                           ${r_s_in}"/>
+                    scale="${r_s_elb} 
+                           ${r_s_elb} 
+                           ${r_s_elb}"/>
             </geometry>
             <material name="white" />
         </visual>
@@ -153,9 +160,9 @@
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
                 <mesh filename="package://cga_ik/meshes/arc_link_thin.stl" 
-                    scale="${r_s_in} 
-                           ${r_s_in} 
-                           ${r_s_in}"/>
+                    scale="${r_s_elb} 
+                           ${r_s_elb} 
+                           ${r_s_elb}"/>
             </geometry>
             <material name="white" />
         </visual>
@@ -175,9 +182,9 @@
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
                 <mesh filename="package://cga_ik/meshes/arc_link_thin.stl" 
-                    scale="${r_s_in} 
-                           ${r_s_in} 
-                           ${r_s_in}"/>
+                    scale="${r_s_elb} 
+                           ${r_s_elb} 
+                           ${r_s_elb}"/>
             </geometry>
             <material name="white" />
         </visual>
