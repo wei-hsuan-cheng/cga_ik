@@ -38,8 +38,8 @@ Quaternionf computeQuatFromBasis(const CGA &x_hat, const CGA &y_hat, const CGA &
 Quaternionf computeMotorInitalQuat(const CGA &rc, const CGA &pos_rc_m)
 {
     CGA z_hat = ((-1) * pos_rc_m).normalized();
-    CGA vec_rc = rc.normalized();
-    CGA x_hat_i = ( cross(z_hat, vec_rc) ).normalized();
+    CGA dir_rc = rc.normalized();
+    CGA x_hat_i = ( cross(z_hat, dir_rc) ).normalized();
     CGA y_hat_i = ( cross(z_hat, x_hat_i) ).normalized(); // Dual    
     return computeQuatFromBasis(x_hat_i, y_hat_i, z_hat);
 }
@@ -48,8 +48,8 @@ Quaternionf computeMotorInitalQuat(const CGA &rc, const CGA &pos_rc_m)
 Quaternionf computeMotorQuat(const CGA &pos_rc_epl, const CGA &pos_rc_m)
 {
     CGA z_hat = ((-1) * pos_rc_m).normalized();
-    CGA vec_m_epl = ( down(pos_rc_epl) - pos_rc_m ).normalized();
-    CGA x_hat = ( cross(z_hat, vec_m_epl) ).normalized();
+    CGA dir_m_epl = ( down(pos_rc_epl) - pos_rc_m ).normalized();
+    CGA x_hat = ( cross(z_hat, dir_m_epl) ).normalized();
     CGA y_hat = ( cross(z_hat, x_hat) ).normalized(); // Dual
     return computeQuatFromBasis(x_hat, y_hat, z_hat);
 }
@@ -59,6 +59,12 @@ CGA computeEndPlateCornerOffset(const float &r_e, const CGA &s, const float &d, 
 {
     // The offset from the rotation centre to the end-plate corners
     return r_e * s + d * e_p;
+}
+
+CGA computeEndPlateCornerOffsetDirection(const float &r_e, const CGA &s, const float &d, const CGA &e_p)
+{
+    // The direction of the offset from the rotation centre to the end-plate corners
+    return ( computeEndPlateCornerOffset(r_e, s, d, e_p) ).normalized();
 }
 
 // Helper: compute the end-plate corner position.
@@ -79,8 +85,8 @@ CGA computeEndPlateCentrePosition(const CGA &pos_rot_cen_epl_0, const CGA &R_rot
 Quaternionf computeEndPlateCornerQuat(const CGA &pos_rc_epl, const CGA &pos_rc_epl_c)
 {
     CGA z_hat = ( (-1) * down(pos_rc_epl) ).normalized();
-    CGA vec_epl_epl_c = (down(pos_rc_epl_c) - down(pos_rc_epl)).normalized();
-    CGA x_hat = ( cross(z_hat, vec_epl_epl_c) ).normalized();
+    CGA dir_epl_epl_c = (down(pos_rc_epl_c) - down(pos_rc_epl)).normalized();
+    CGA x_hat = ( cross(z_hat, dir_epl_epl_c) ).normalized();
     CGA y_hat = ( cross(z_hat, x_hat) ).normalized(); // Dual
     return computeQuatFromBasis(x_hat, y_hat, z_hat);
 }
@@ -97,7 +103,7 @@ CGA computeFixedPlanes(const CGA &pos_rc_m, const CGA &S)
 CGA computeMovingPlanes(const CGA &x, const CGA &R_rot_cen_ee, const CGA &pos_rc_epl, const CGA &S)
 {
     CGA Tx = CGA(1.0f,0) + 0.5f * ((R_rot_cen_ee * x * ~R_rot_cen_ee) ^ ni);
-    CGA planeFactor = ((S | pos_rc_epl) ^ ni).normalized();
+    CGA planeFactor = ( (S | pos_rc_epl) ^ ni ).normalized();
     CGA p_full = Tx * planeFactor * ~Tx;
     return Grade(p_full, 4);
 }
@@ -119,8 +125,8 @@ CGA computeElbowPositions(const CGA &a, const CGA &p, const CGA &S)
 Quaternionf computeElbowQuat(const CGA &pos_rc_epl, const CGA &pos_rc_elb)
 {
     CGA z_hat = ( (-1) * down(pos_rc_elb) ).normalized();
-    CGA vec_elb_epl = (down(pos_rc_epl) - down(pos_rc_elb)).normalized();
-    CGA y_hat = ( cross(z_hat, vec_elb_epl) ).normalized();
+    CGA dir_elb_epl = (down(pos_rc_epl) - down(pos_rc_elb)).normalized();
+    CGA y_hat = ( cross(z_hat, dir_elb_epl) ).normalized();
     CGA x_hat = ( cross(y_hat, z_hat) ).normalized();
     return computeQuatFromBasis(x_hat, y_hat, z_hat);
 }
@@ -138,9 +144,9 @@ float computeRelativeZAngle(const Quaternionf & quat_0_1, const Quaternionf & qu
 struct SPM3DoFIKResult {
     float r_s_out, r_s_in, d;
     
+    // Relative poses w.r.t the base
     Vector3f pos_base_rot_cen;      // rotation centre position w.r.t. base
     Quaternionf quat_base_rot_cen; // rotation centre quaternion orientation w.r.t. base
-
     Vector3f pos_ubase_rot_cen;      // rotation centre position w.r.t. up-shifted base
     Quaternionf quat_ubase_rot_cen; // rotation centre quaternion orientation w.r.t. base
 
@@ -151,8 +157,6 @@ struct SPM3DoFIKResult {
     Vector3f pos_rot_cen_m_0, pos_rot_cen_m_1, pos_rot_cen_m_2;           // motor positions
     Quaternionf quat_rot_cen_m_0, quat_rot_cen_m_1, quat_rot_cen_m_2; // quaternions for motor orientations
     Quaternionf quat_rot_cen_m_0_i, quat_rot_cen_m_1_i, quat_rot_cen_m_2_i; // initial quaternions for motor orientations
-
-    
 
     Vector3f pos_rot_cen_epl_0, pos_rot_cen_epl_1, pos_rot_cen_epl_2, pos_rot_cen_epl_c, pos_rot_cen_ept; // end-plate corners and centre, and the end-point on the outer sphere
     Quaternionf quat_rot_cen_epl_0, quat_rot_cen_epl_1, quat_rot_cen_epl_2, quat_rot_cen_epl_c, quat_rot_cen_ept; // quaternions for end-plate corners and centre, and the end-point on the outer sphere
@@ -181,43 +185,46 @@ inline SPM3DoFIKResult computeSPM3DoFIK(
     // Target quaternion orientation for the end-plate
     const Quaternionf &target_quat_epl) 
 {
-    // These are the invariant parameters (can be defined as global variables)
+    // These are the invariant parameters (can be defined as global variables)  
 
-    // Parameteros for the up-shifted base
-    float r_c_prime = r_s_in * std::cos(ang_b_m * RM::d2r);
-    float r_b_prime = r_s_in * std::sin(ang_b_m * RM::d2r);
+    // Start with constructing the “fixed” spheres about the rotation centre
+    // Unit sphere S with radius of 1 about rot_cen (grade-4 sphere)
+    // Outer sphere S_out with radius of r_s_out about rot_cen (grade-4 sphere)
+    // Inner sphere S_in with radius of r_s_in about rot_cen (grade-4 sphere)
+    CGA S = sphere(1.0f, down(no), 4);
+    CGA S_out = sphere(r_s_out, down(no), 4);
+    CGA S_in = sphere(r_s_in, down(no), 4);  
 
-    // Rotation centre position w.r.t. up-shifted base
-    CGA pos_base_rot_cen = r_c * e_principal; // Rotation centre position w.r.t. up-shifted base
+    // Rotation centre position w.r.t. base
+    CGA pos_base_rot_cen = r_c * e_principal; // Rotation centre position w.r.t. base
     Quaternionf quat_base_rot_cen = Quaternionf::Identity(); 
     
     // Rotation centre position w.r.t. up-shifted base
+    float r_c_prime = r_s_in * std::cos(ang_b_m * RM::d2r);
     CGA pos_ubase_rot_cen = r_c_prime * e_principal; // Rotation centre position w.r.t. up-shifted base
     Quaternionf quat_ubase_rot_cen = Quaternionf::Identity(); 
 
     // Compute s_2 based on s_0 and s_1 (G3 vector)
     CGA s_2 = (-1.0f) * s_0 + (-1.0f) * s_1;
 
+    // Motor ray direction, where the motors and pivots lie on
+    CGA dir_rot_cen_m_0 = (r_b * s_0 - pos_base_rot_cen).normalized();
+    CGA dir_rot_cen_m_1 = (r_b * s_1 - pos_base_rot_cen).normalized();
+    CGA dir_rot_cen_m_2 = (r_b * s_2 - pos_base_rot_cen).normalized();
     // Pivot positions (G3 vectors)
-    CGA pos_rot_cen_piv_0 = r_b * s_0 - pos_base_rot_cen;
-    CGA pos_rot_cen_piv_1 = r_b * s_1 - pos_base_rot_cen;
-    CGA pos_rot_cen_piv_2 = r_b * s_2 - pos_base_rot_cen;
-
+    CGA pos_rot_cen_piv_0 = r_s_out * dir_rot_cen_m_0;
+    CGA pos_rot_cen_piv_1 = r_s_out * dir_rot_cen_m_1;
+    CGA pos_rot_cen_piv_2 = r_s_out * dir_rot_cen_m_2;
     // Motor positions (G3 vectors)
-    CGA pos_rot_cen_m_0 = r_b_prime * s_0 - pos_ubase_rot_cen;
-    CGA pos_rot_cen_m_1 = r_b_prime * s_1 - pos_ubase_rot_cen;
-    CGA pos_rot_cen_m_2 = r_b_prime * s_2 - pos_ubase_rot_cen;
+    CGA pos_rot_cen_m_0 = r_s_in * dir_rot_cen_m_0;
+    CGA pos_rot_cen_m_1 = r_s_in * dir_rot_cen_m_1;
+    CGA pos_rot_cen_m_2 = r_s_in * dir_rot_cen_m_2;
 
-    // Construct the “fixed” spheres
-    // Outer sphere S_out with radius of r_s_out about rot_cen (grade-4 sphere)
-    // Inner sphere S_in with radius of r_s_in about rot_cen (grade-4 sphere)
-    CGA S_out = sphere(r_s_out, cga_utils::R2G(Vector3f::Zero()), 4);
-    CGA S_in = sphere(r_s_in, cga_utils::R2G(Vector3f::Zero()), 4);
 
     // Construct the “fixed” planes (a_0, a_1, a_2) (grade-4 planes)
-    CGA a_0 = computeFixedPlanes(pos_rot_cen_m_0, S_in);
-    CGA a_1 = computeFixedPlanes(pos_rot_cen_m_1, S_in);
-    CGA a_2 = computeFixedPlanes(pos_rot_cen_m_2, S_in);
+    CGA a_0 = computeFixedPlanes(dir_rot_cen_m_0, S);
+    CGA a_1 = computeFixedPlanes(dir_rot_cen_m_1, S);
+    CGA a_2 = computeFixedPlanes(dir_rot_cen_m_2, S);
 
     
     // These are the variant parameters
@@ -227,12 +234,21 @@ inline SPM3DoFIKResult computeSPM3DoFIK(
     CGA R_rot_cen_ee = zyxEuler2Rotor(zyx_euler);
 
     // Positions of the end-plate corners (G41 vectors)
-    CGA offset_rot_cen_epl_0 = computeEndPlateCornerOffset(r_e, s_0, d, e_principal); // invariant
+    CGA dir_offset_rot_cen_epl_0 = computeEndPlateCornerOffsetDirection(r_e, s_0, d, e_principal); // invariant
+    CGA offset_rot_cen_epl_0 = r_s_in * dir_offset_rot_cen_epl_0;
+    CGA dir_rot_cen_epl_0 = computeEndPlateCornerPosition(dir_offset_rot_cen_epl_0, R_rot_cen_ee);
     CGA pos_rot_cen_epl_0 = computeEndPlateCornerPosition(offset_rot_cen_epl_0, R_rot_cen_ee);
-    CGA offset_rot_cen_epl_1 = computeEndPlateCornerOffset(r_e, s_1, d, e_principal);
+
+    CGA dir_offset_rot_cen_epl_1 = computeEndPlateCornerOffsetDirection(r_e, s_1, d, e_principal);
+    CGA offset_rot_cen_epl_1 = r_s_in * dir_offset_rot_cen_epl_1;
+    CGA dir_rot_cen_epl_1 = computeEndPlateCornerPosition(dir_offset_rot_cen_epl_1, R_rot_cen_ee);
     CGA pos_rot_cen_epl_1 = computeEndPlateCornerPosition(offset_rot_cen_epl_1, R_rot_cen_ee);
-    CGA offset_rot_cen_epl_2 = computeEndPlateCornerOffset(r_e, s_2, d, e_principal);
+
+    CGA dir_offset_rot_cen_epl_2 = computeEndPlateCornerOffsetDirection(r_e, s_2, d, e_principal);
+    CGA offset_rot_cen_epl_2 = r_s_in * dir_offset_rot_cen_epl_2;
+    CGA dir_rot_cen_epl_2 = computeEndPlateCornerPosition(dir_offset_rot_cen_epl_2, R_rot_cen_ee);
     CGA pos_rot_cen_epl_2 = computeEndPlateCornerPosition(offset_rot_cen_epl_2, R_rot_cen_ee);
+
 
     // End-plate centre (G41 vector)
     CGA pos_rot_cen_epl_c = computeEndPlateCentrePosition(pos_rot_cen_epl_0, R_rot_cen_ee, r_e, s_0);
@@ -241,9 +257,9 @@ inline SPM3DoFIKResult computeSPM3DoFIK(
     CGA pos_rot_cen_ept = up( r_s_in * down(pos_rot_cen_epl_c).normalized() );
 
     // Construct the moving planes (p_0, p_1, p_2) (grade-4 planes)
-    CGA p_0 = computeMovingPlanes(offset_rot_cen_epl_0, R_rot_cen_ee, pos_rot_cen_epl_0, S_in);
-    CGA p_1 = computeMovingPlanes(offset_rot_cen_epl_1, R_rot_cen_ee, pos_rot_cen_epl_1, S_in);
-    CGA p_2 = computeMovingPlanes(offset_rot_cen_epl_2, R_rot_cen_ee, pos_rot_cen_epl_2, S_in);
+    CGA p_0 = computeMovingPlanes(dir_offset_rot_cen_epl_0, R_rot_cen_ee, dir_rot_cen_epl_0, S);
+    CGA p_1 = computeMovingPlanes(dir_offset_rot_cen_epl_1, R_rot_cen_ee, dir_rot_cen_epl_1, S);
+    CGA p_2 = computeMovingPlanes(dir_offset_rot_cen_epl_2, R_rot_cen_ee, dir_rot_cen_epl_2, S);
 
     // Compute the elbow positions (G41 vectors)
     CGA pos_rot_cen_elb_0 = computeElbowPositions(a_0, p_0, S_in);
