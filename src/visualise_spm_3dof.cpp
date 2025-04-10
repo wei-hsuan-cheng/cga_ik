@@ -149,8 +149,8 @@ private:
         s_0_ = e1;
         float ang_apart = 2.0 * M_PI / 3.0; // +120 [deg]
         // float ang_apart = -2.0 * M_PI / 3.0; // -120 [deg]
-        CGA rot_e12_120 = cga_utils::rot(e1 * e2, ang_apart); // Rotate s_0_ by +-120 [deg] to get s_1_
-        s_1_ = rot_e12_120 * s_0_ * ~rot_e12_120;
+        CGA rot_e12 = cga_utils::rot(e1 * e2, ang_apart); // Rotate s_0_ by +-120 [deg] to get s_1_
+        s_1_ = rot_e12 * s_0_ * ~rot_e12;
 
         // IK solver for the spm
         ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_c_, ang_b_m_, r_b_, d_, r_e_, r_s_piv_, r_s_m_, r_s_elb_, r_s_epl_,
@@ -164,26 +164,22 @@ private:
         std::cout << "---------- Geometric parameters of the spm [m, deg] ----------" << std::endl;
         std::cout << "--------------------------------------------------------------" << std::endl;
 
+        std::cout << "Lower parts" << std::endl;
         std::cout << "r_c = " << r_c_ << std::endl;
         std::cout << "ang_b_m = " << ang_b_m_ << std::endl;
         std::cout << "r_b = " << r_b_ << std::endl;
-        std::cout << "r_s_piv = " << r_s_piv_ << std::endl;
+        
+        std::cout << "Upper parts" << std::endl;
         std::cout << "d = " << d_ << std::endl;
         std::cout << "r_e = " << r_e_ << std::endl;
 
+        std::cout << "Sphere radii" << std::endl;
+        std::cout << "r_s_piv = " << r_s_piv_ << std::endl;
+        std::cout << "r_s_m = " << r_s_m_ << std::endl;
+        std::cout << "r_s_elb = " << r_s_elb_ << std::endl;
+        std::cout << "r_s_epl = " << r_s_epl_ << std::endl;
+
         std::cout << "--------------------------------------------------------------" << std::endl;
-        
-
-        // // Print initial poses of each component
-        // // Motor positions and orientations
-        // std::cout << "---------- Initial position and orientation of the spm ----------" << std::endl;
-        // std::cout << "motor_0 pos [m] = " << ik_result_.pos_rot_cen_m_0.transpose() << std::endl;
-        // std::cout << "motor_0 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_0.cast<double>() ).reverse().transpose() << std::endl;
-        // std::cout << "motor_1 pos [m] = " << ik_result_.pos_rot_cen_m_1.transpose() << std::endl;
-        // std::cout << "motor_1 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_1.cast<double>() ).reverse().transpose() << std::endl;
-        // std::cout << "motor_2 pos [m] = " << ik_result_.pos_rot_cen_m_2.transpose() << std::endl;
-        // std::cout << "motor_2 rpy [rad] = " << RM::Quat2zyxEuler( ik_result_.quat_rot_cen_m_2.cast<double>() ).reverse().transpose() << std::endl;
-
     }
 
     void initRobotVisual()

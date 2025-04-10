@@ -189,7 +189,7 @@
     <!-- epl_c -->
     <link name="spm_epl_c">
         <visual>
-            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <origin xyz="0 0 ${-13.24849 * mm2m}" rpy="0 0 ${-(1.0 / 6.0) * pi}"/>
             <geometry>
                 <mesh filename="package://cga_ik/meshes/spm_3dof/spm_end_plate.stl" 
                       scale="${mm2m} ${mm2m} ${mm2m}"/>
