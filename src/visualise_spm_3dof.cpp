@@ -114,6 +114,7 @@ private:
 
     // IK solver object and result
     std::shared_ptr<CGAIKSPM3DoF> ik_solver_;
+    SPM3DoFIKResetOrigin ik_reset_origin_result_;
     SPM3DoFIKResult ik_result_;
 
 
@@ -190,6 +191,7 @@ private:
         );
 
         // Solve initial pose
+        ik_reset_origin_result_ = ik_solver_->resetEEOrigin(th_z_ee_init_);
         ik_result_ = ik_solver_->computeIK(quat_cmd_);
 
         // Print robot geometric parameters
@@ -213,7 +215,8 @@ private:
         std::cout << "r_s_epl = " << r_s_epl_ << std::endl;
 
         std::cout << "th_z_ee_init = " << th_z_ee_init_ << std::endl;
-        std::cout << "th_0_init, th_1_init, th_2_init = " << ik_result_.th_0 * RM::r2d << ", " << ik_result_.th_1 * RM::r2d << ", " << ik_result_.th_2 * RM::r2d << std::endl;
+        std::cout << "[nom] th_0_init, th_1_init, th_2_init = " << ik_reset_origin_result_.th_0_nom * RM::r2d << ", " << ik_reset_origin_result_.th_1_nom * RM::r2d << ", " << ik_reset_origin_result_.th_2_nom * RM::r2d << std::endl;
+        std::cout << "[nom] quat_ee_nom = " << ik_reset_origin_result_.quat_ee_nom.w() << ", " << ik_reset_origin_result_.quat_ee_nom.x() << ", " << ik_reset_origin_result_.quat_ee_nom.y() << ", " << ik_reset_origin_result_.quat_ee_nom.z() << std::endl;
 
         // std::cout << "ik_solver.s_0 = " << std::endl; ik_solver_->s_0_.log();
 

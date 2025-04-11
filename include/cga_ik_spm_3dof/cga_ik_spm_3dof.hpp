@@ -28,6 +28,16 @@ struct SPM3DoFIKResult
     float th_0, th_1, th_2;
 };
 
+struct SPM3DoFIKResetOrigin
+{
+    // Nominal quaternion orientation
+    Quaternionf quat_ee_nom;
+
+    // Nominal motor angles [rad]
+    float th_0_nom, th_1_nom, th_2_nom;
+    
+};
+
 /**
  * @brief A class that encapsulates the geometry and methods for a 3-DoF SPM IK (Spherical Parallel Manipulator).
  */
@@ -125,6 +135,7 @@ public:
     void getTargetRotor(const Quaternionf &target_quat_ubase_epl);
     void solveVariantGeometry();
     void solveAngles();
+    SPM3DoFIKResetOrigin resetEEOrigin(const float &th_z_ee_init);
     SPM3DoFIKResult computeIK(const Quaternionf &target_quat_ubase_epl);
 
 private:
@@ -139,6 +150,9 @@ private:
     float r_s_epl_;
     float z_rot_cen_ee_;
     int   krl_;
+
+    // Reset end-effector origin
+    Quaternionf quat_ee_nom_; // Nominal quaternion orientation
 
     // CGA basis vectors:
     CGA e_principal_;
@@ -257,6 +271,8 @@ inline CGAIKSPM3DoF::CGAIKSPM3DoF(
   s_0_(s_0),
   s_1_(s_1)
 {
+    // Reset end-effector origin
+    quat_ee_nom_ = Quaternionf::Identity();
     // Solve for the invariant poses of the robot
     solveInvariantGeometry();
     // IK target orientaion of the end-effector w.r.t. the rotation centre
@@ -537,6 +553,25 @@ inline void CGAIKSPM3DoF::solveAngles()
     th_0_ = computeRelativeZAngle(quat_rot_cen_m_0_i_, quat_rot_cen_m_0_);
     th_1_ = computeRelativeZAngle(quat_rot_cen_m_1_i_, quat_rot_cen_m_1_);
     th_2_ = computeRelativeZAngle(quat_rot_cen_m_2_i_, quat_rot_cen_m_2_);
+}
+
+inline SPM3DoFIKResetOrigin CGAIKSPM3DoF::resetEEOrigin(const float &th_z_ee_init)
+{
+    // Nominal quaternion orientation
+    quat_ee_nom_ = RM::Quatz(th_z_ee_init * RM::d2r).cast<float>();
+    // IK target orientaion of the end-effector w.r.t. the rotation centre
+    getTargetRotor(quat_ee_nom_);
+    // Solve for the variant poses of the robot
+    solveVariantGeometry();
+    // Solve for the motor angles [rad]
+    solveAngles();
+
+    SPM3DoFIKResetOrigin result;
+    result.quat_ee_nom = quat_ee_nom_;
+    result.th_0_nom = th_0_;
+    result.th_1_nom = th_1_;
+    result.th_2_nom = th_2_;
+    return result;
 }
 
 inline SPM3DoFIKResult CGAIKSPM3DoF::computeIK(const Quaternionf &target_quat_ubase_epl)
