@@ -470,8 +470,8 @@ private:
         // double th = 0.0;
 
         // axis_ang_cmd_ = Vector4d(0.0, 0.0, 1.0, th);
-        // axis_ang_cmd_ = Vector4d(0.0, 1.0, 0.0, th);
-        axis_ang_cmd_ = Vector4d(1.0, 0.0, 0.0, th);
+        axis_ang_cmd_ = Vector4d(0.0, 1.0, 0.0, th);
+        // axis_ang_cmd_ = Vector4d(1.0, 0.0, 0.0, th);
 
         // Vector3d u_hat = Vector3d(1.0, 0.0, 0.0);
         // Quaterniond quat_ubase_epl_c_reset = RM::Quatz(th_z_ee_reset_ * RM::d2r);
