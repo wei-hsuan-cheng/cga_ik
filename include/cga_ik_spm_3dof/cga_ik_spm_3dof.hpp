@@ -60,6 +60,7 @@ public:
      * @param e_principal   principal axis (e.g. e3)
      * @param s_0           first basis vector on the base plane (e.g. e1)
      * @param s_1           second basis vector on the base plane (120 deg from s_0)
+     * @param th_z_ee_reset  initial z-rotation for re-origining the coordinate system (mechanical origin -> geometric origin)
      */
     CGAIKSPM3DoF(
         float r_c,
@@ -75,7 +76,8 @@ public:
         int   krl,
         const CGA &e_principal,
         const CGA &s_0,
-        const CGA &s_1
+        const CGA &s_1,
+        float th_z_ee_reset
     );
 
     /**
@@ -135,7 +137,7 @@ public:
     void getTargetRotor(const Quaternionf &target_quat_ubase_epl);
     void solveVariantGeometry();
     void solveAngles();
-    SPM3DoFIKResetOrigin resetEEOrigin(const float &th_z_ee_init);
+    SPM3DoFIKResetOrigin resetEEOrigin();
     SPM3DoFIKResult computeIK(const Quaternionf &target_quat_ubase_epl);
 
 private:
@@ -152,6 +154,7 @@ private:
     int   krl_;
 
     // Reset end-effector origin
+    float th_z_ee_reset_;
     Quaternionf quat_ee_nom_; // Nominal quaternion orientation
 
     // CGA basis vectors:
@@ -254,7 +257,8 @@ inline CGAIKSPM3DoF::CGAIKSPM3DoF(
     int   krl,
     const CGA &e_principal,
     const CGA &s_0,
-    const CGA &s_1
+    const CGA &s_1,
+    float th_z_ee_reset
 )
 : r_c_(r_c),
   ang_b_m_(ang_b_m),
@@ -269,7 +273,8 @@ inline CGAIKSPM3DoF::CGAIKSPM3DoF(
   krl_(krl),
   e_principal_(e_principal),
   s_0_(s_0),
-  s_1_(s_1)
+  s_1_(s_1),
+  th_z_ee_reset_(th_z_ee_reset)
 {
     // Reset end-effector origin
     quat_ee_nom_ = Quaternionf::Identity();
@@ -555,10 +560,10 @@ inline void CGAIKSPM3DoF::solveAngles()
     th_2_ = computeRelativeZAngle(quat_rot_cen_m_2_i_, quat_rot_cen_m_2_);
 }
 
-inline SPM3DoFIKResetOrigin CGAIKSPM3DoF::resetEEOrigin(const float &th_z_ee_init)
+inline SPM3DoFIKResetOrigin CGAIKSPM3DoF::resetEEOrigin()
 {
     // Nominal quaternion orientation
-    quat_ee_nom_ = RM::Quatz(th_z_ee_init * RM::d2r).cast<float>();
+    quat_ee_nom_ = RM::Quatz(th_z_ee_reset_ * RM::d2r).cast<float>();
     // IK target orientaion of the end-effector w.r.t. the rotation centre
     getTargetRotor(quat_ee_nom_);
     // Solve for the variant poses of the robot

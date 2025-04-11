@@ -95,7 +95,7 @@ private:
     double t_;
     rclcpp::Time current_time_;
 
-    double th_z_ee_init_;
+    double th_z_ee_reset_;
     Vector4d axis_ang_cmd_;
     Quaternionf quat_cmd_;
 
@@ -158,14 +158,14 @@ private:
         this->get_parameter("krl", krl_);
 
         // Initial z-rotation for re-origining the coordinate system (mechanical origin -> geometric origin)
-        this->declare_parameter<double>("th_z_ee_init", 0.0);
-        this->get_parameter("th_z_ee_init", th_z_ee_init_);
+        this->declare_parameter<double>("th_z_ee_reset", 0.0);
+        this->get_parameter("th_z_ee_reset", th_z_ee_reset_);
 
         // Initial IK target pose (quaternion orientation)
-        // axis_ang_cmd_ = Vector4d(0.0, 0.0, 1.0, th_z_ee_init_ * RM::d2r);
+        // axis_ang_cmd_ = Vector4d(0.0, 0.0, 1.0, th_z_ee_reset_ * RM::d2r);
         // Vector3d so3 = (axis_ang_cmd_.head(3)).normalized() * axis_ang_cmd_(3);
         // quat_cmd_ = RM::so32Quat(so3).cast<float>();
-        quat_cmd_ = RM::Quatz(th_z_ee_init_ * RM::d2r).cast<float>();
+        quat_cmd_ = RM::Quatz(th_z_ee_reset_ * RM::d2r).cast<float>();
         
 
         // SPM coordinate system
@@ -187,11 +187,12 @@ private:
         r_c_, ang_b_m_, r_b_, d_, r_e_,
         r_s_piv_, r_s_m_, r_s_elb_, r_s_epl_,
         z_rot_cen_ee_, krl_,
-        e_principal_, s_0_, s_1_
+        e_principal_, s_0_, s_1_,
+        th_z_ee_reset_
         );
 
         // Solve initial pose
-        ik_reset_origin_result_ = ik_solver_->resetEEOrigin(th_z_ee_init_);
+        ik_reset_origin_result_ = ik_solver_->resetEEOrigin();
         ik_result_ = ik_solver_->computeIK(quat_cmd_);
 
         // Print robot geometric parameters
@@ -214,7 +215,7 @@ private:
         std::cout << "r_s_elb = " << r_s_elb_ << std::endl;
         std::cout << "r_s_epl = " << r_s_epl_ << std::endl;
 
-        std::cout << "th_z_ee_init = " << th_z_ee_init_ << std::endl;
+        std::cout << "th_z_ee_reset = " << th_z_ee_reset_ << std::endl;
         std::cout << "[nom] th_0_init, th_1_init, th_2_init = " << ik_reset_origin_result_.th_0_nom * RM::r2d << ", " << ik_reset_origin_result_.th_1_nom * RM::r2d << ", " << ik_reset_origin_result_.th_2_nom * RM::r2d << std::endl;
         std::cout << "[nom] quat_ee_nom = " << ik_reset_origin_result_.quat_ee_nom.w() << ", " << ik_reset_origin_result_.quat_ee_nom.x() << ", " << ik_reset_origin_result_.quat_ee_nom.y() << ", " << ik_reset_origin_result_.quat_ee_nom.z() << std::endl;
 
@@ -468,10 +469,10 @@ private:
         t_ = k_ * Ts_;
 
         // Target orientation for the IK problem
-        // double th = th_z_ee_init_;
+        // double th = th_z_ee_reset_;
 
         double freq = 0.1;
-        double th = th_z_ee_init_ * std::sin(2.0 * M_PI * freq * t_);
+        double th = th_z_ee_reset_ * std::sin(2.0 * M_PI * freq * t_);
 
         // double th = 0.0;
 

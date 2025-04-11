@@ -32,7 +32,7 @@ def generate_launch_description():
     
     krl = str(geometric_params.get("krl"))
     
-    th_z_ee_init = str(geometric_params.get("th_z_ee_init"))
+    th_z_ee_reset = str(geometric_params.get("th_z_ee_reset"))
 
     urdf_xacro_path = os.path.join(
         get_package_share_directory("cga_ik"),
@@ -65,7 +65,7 @@ def generate_launch_description():
             
             "krl:=", krl, " ",
             
-            "th_z_ee_init:=", th_z_ee_init, " ",
+            "th_z_ee_reset:=", th_z_ee_reset, " ",
         ]
     )
     
