@@ -35,9 +35,7 @@ class CGAIKSPM3DoF
 {
 public:
     /**
-     * @brief Constructor that sets up the “invariant” geometry parameters
-     *        and precomputes the “fixed” spheres/planes, storing them as members.
-     *
+     * @brief Constructor that sets up the “invariant” geometry parameters and precomputes the “fixed” spheres/planes, storing them as members.
      * @param r_c           rotation-centre offset
      * @param ang_b_m       angle between base-plane pivot and motor pivot [deg]
      * @param r_b           base radius
@@ -75,7 +73,6 @@ public:
      * @param target_quat_ubase_epl The orientation of the end-plate w.r.t. the up-shifted base frame
      * @return SPM3DoFIKResult The IK solution containing keypoints positions, orientations, and motor angles for the 3-DoF SPM.
      */
-
     float r_s_piv() const { return r_s_piv_; }
     float r_s_m() const { return r_s_m_; }
     float r_s_elb() const { return r_s_elb_; }
@@ -101,33 +98,31 @@ public:
     Quaternionf quat_rot_cen_m_1() const { return quat_rot_cen_m_1_; }
     Quaternionf quat_rot_cen_m_2() const { return quat_rot_cen_m_2_; }
 
-    // End-plate corner and centre poses
+    // End-plate corners/centre, sphere end-point, and end-effector poses
     Vector3f pos_rot_cen_epl_0() const { return cga_utils::G2R(pos_rot_cen_epl_0_); }
     Vector3f pos_rot_cen_epl_1() const { return cga_utils::G2R(pos_rot_cen_epl_1_); }
     Vector3f pos_rot_cen_epl_2() const { return cga_utils::G2R(pos_rot_cen_epl_2_); }
     Vector3f pos_rot_cen_epl_c() const { return cga_utils::G2R(pos_rot_cen_epl_c_); }
     Vector3f pos_rot_cen_ept() const { return cga_utils::G2R(pos_rot_cen_ept_); }
     Vector3f pos_rot_cen_ee() const { return cga_utils::G2R(pos_rot_cen_ee_); }
-
     Quaternionf quat_rot_cen_epl_0() const { return quat_rot_cen_epl_0_; }
     Quaternionf quat_rot_cen_epl_1() const { return quat_rot_cen_epl_1_; }
     Quaternionf quat_rot_cen_epl_2() const { return quat_rot_cen_epl_2_; }
+    Quaternionf quat_rot_cen_epl_c() const { return quat_rot_cen_epl_c_; }
+    Quaternionf quat_rot_cen_ept() const { return quat_rot_cen_ept_; }
+    Quaternionf quat_rot_cen_ee() const { return quat_rot_cen_ee_; }
 
     // Elbow poses
     Vector3f pos_rot_cen_elb_0() const { return cga_utils::G2R(pos_rot_cen_elb_0_); }
     Vector3f pos_rot_cen_elb_1() const { return cga_utils::G2R(pos_rot_cen_elb_1_); }
     Vector3f pos_rot_cen_elb_2() const { return cga_utils::G2R(pos_rot_cen_elb_2_); }
-
-    Quaternionf quat_rot_cen_epl_c() const { return quat_rot_cen_epl_c_; }
-    Quaternionf quat_rot_cen_ept() const { return quat_rot_cen_ept_; }
-    Quaternionf quat_rot_cen_ee() const { return quat_rot_cen_ee_; }
-
     Quaternionf quat_rot_cen_elb_0() const { return quat_rot_cen_elb_0_; }
     Quaternionf quat_rot_cen_elb_1() const { return quat_rot_cen_elb_1_; }
     Quaternionf quat_rot_cen_elb_2() const { return quat_rot_cen_elb_2_; }
 
-    void getTargetRotor(const Quaternionf &target_quat_ubase_epl);
+    // Main functions
     void solveInvariantGeometry();
+    void getTargetRotor(const Quaternionf &target_quat_ubase_epl);
     void solveVariantGeometry();
     void solveAngles();
     SPM3DoFIKResult computeIK(const Quaternionf &target_quat_ubase_epl);
@@ -407,14 +402,9 @@ inline float CGAIKSPM3DoF::computeRelativeZAngle(const Quaternionf &quat_0_1,
     return (axis_ang_1_2(2) > 0.0) ? float(axis_ang_1_2(3)) : float(-axis_ang_1_2(3));
 }
 
-inline void CGAIKSPM3DoF::getTargetRotor(const Quaternionf &target_quat_ubase_epl)
-{
-    // IK target rotor orientaion of the end-effector w.r.t. the rotation centre
-    target_quat_rot_cen_epl_ = quat_ubase_rot_cen_.inverse() * target_quat_ubase_epl;
-    Vector3f zyx_euler = RM::Quat2zyxEuler( target_quat_rot_cen_epl_.cast<double>() ).cast<float>();
-    R_rot_cen_ee_ = zyxEuler2Rotor(zyx_euler);
-}
 
+
+// Main functions
 inline void CGAIKSPM3DoF::solveInvariantGeometry()
 {
     // Compute s_2
@@ -469,6 +459,14 @@ inline void CGAIKSPM3DoF::solveInvariantGeometry()
     quat_rot_cen_m_0_i_ = computeMotorInitalQuat(pos_ubase_rot_cen_, pos_rot_cen_m_0_);
     quat_rot_cen_m_1_i_ = computeMotorInitalQuat(pos_ubase_rot_cen_, pos_rot_cen_m_1_);
     quat_rot_cen_m_2_i_ = computeMotorInitalQuat(pos_ubase_rot_cen_, pos_rot_cen_m_2_);
+}
+
+inline void CGAIKSPM3DoF::getTargetRotor(const Quaternionf &target_quat_ubase_epl)
+{
+    // IK target rotor orientaion of the end-effector w.r.t. the rotation centre
+    target_quat_rot_cen_epl_ = quat_ubase_rot_cen_.inverse() * target_quat_ubase_epl;
+    Vector3f zyx_euler = RM::Quat2zyxEuler( target_quat_rot_cen_epl_.cast<double>() ).cast<float>();
+    R_rot_cen_ee_ = zyxEuler2Rotor(zyx_euler);
 }
 
 inline void CGAIKSPM3DoF::solveVariantGeometry()
@@ -541,7 +539,6 @@ inline void CGAIKSPM3DoF::solveAngles()
     th_2_ = computeRelativeZAngle(quat_rot_cen_m_2_i_, quat_rot_cen_m_2_);
 }
 
-// Main function
 inline SPM3DoFIKResult CGAIKSPM3DoF::computeIK(const Quaternionf &target_quat_ubase_epl)
 {
     // IK target orientaion of the end-effector w.r.t. the rotation centre
