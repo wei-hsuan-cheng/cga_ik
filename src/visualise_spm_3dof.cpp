@@ -162,10 +162,8 @@ private:
         this->get_parameter("th_z_ee_reset", th_z_ee_reset_);
 
         // Initial IK target pose (quaternion orientation)
-        // axis_ang_cmd_ = Vector4d(0.0, 0.0, 1.0, th_z_ee_reset_ * RM::d2r);
-        // Vector3d so3 = (axis_ang_cmd_.head(3)).normalized() * axis_ang_cmd_(3);
-        // quat_cmd_ = RM::so32Quat(so3).cast<float>();
-        quat_cmd_ = RM::Quatz(th_z_ee_reset_ * RM::d2r).cast<float>();
+        // quat_cmd_ = RM::Quatz(th_z_ee_reset_ * RM::d2r).cast<float>();
+        quat_cmd_ = Quaternionf::Identity();
         
 
         // SPM coordinate system
@@ -193,7 +191,7 @@ private:
 
         // Solve initial pose
         ik_reset_origin_result_ = ik_solver_->resetEEOrigin();
-        ik_result_ = ik_solver_->computeIK(quat_cmd_);
+        ik_result_ = ik_solver_->solveIK(quat_cmd_);
 
         // Print robot geometric parameters
         std::cout << "--------------------------------------------------------------" << std::endl;
@@ -217,9 +215,7 @@ private:
 
         std::cout << "th_z_ee_reset = " << th_z_ee_reset_ << std::endl;
         std::cout << "[nom] th_0_init, th_1_init, th_2_init = " << ik_reset_origin_result_.th_0_nom * RM::r2d << ", " << ik_reset_origin_result_.th_1_nom * RM::r2d << ", " << ik_reset_origin_result_.th_2_nom * RM::r2d << std::endl;
-        std::cout << "[nom] quat_ubase_epl_c_nom = " << ik_reset_origin_result_.quat_ubase_epl_c_nom.w() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_nom.x() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_nom.y() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_nom.z() << std::endl;
-
-        // std::cout << "ik_solver.s_0 = " << std::endl; ik_solver_->s_0_.log();
+        std::cout << "[nom] quat_ubase_epl_c_reset = " << ik_reset_origin_result_.quat_ubase_epl_c_reset.w() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.x() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.y() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.z() << std::endl;
 
         std::cout << "--------------------------------------------------------------" << std::endl;
 
@@ -469,16 +465,19 @@ private:
         t_ = k_ * Ts_;
 
         // Target orientation for the IK problem
-        // double th = th_z_ee_reset_;
-
         double freq = 0.1;
         double th = 30.0f * std::sin(2.0 * M_PI * freq * t_);
-
         // double th = 0.0;
 
         // axis_ang_cmd_ = Vector4d(0.0, 0.0, 1.0, th);
         // axis_ang_cmd_ = Vector4d(0.0, 1.0, 0.0, th);
         axis_ang_cmd_ = Vector4d(1.0, 0.0, 0.0, th);
+
+        // Vector3d u_hat = Vector3d(1.0, 0.0, 0.0);
+        // Quaterniond quat_ubase_epl_c_reset = RM::Quatz(th_z_ee_reset_ * RM::d2r);
+        // Vector3d u_hat_remapped = RM::InvQuat(quat_ubase_epl_c_reset) * u_hat;
+        // axis_ang_cmd_ = Vector4d(u_hat_remapped(0), u_hat_remapped(1), u_hat_remapped(2), th);
+        
 
         Vector3d so3 = (axis_ang_cmd_.head(3)).normalized() * axis_ang_cmd_(3) * RM::d2r;
         quat_cmd_ = RM::so32Quat(so3).cast<float>();
@@ -486,7 +485,7 @@ private:
 
     void solveSPMIK() 
     {
-        ik_result_ = ik_solver_->computeIK(quat_cmd_);
+        ik_result_ = ik_solver_->solveIK(quat_cmd_);
     }
 
     void publishIKSolution()
@@ -496,13 +495,20 @@ private:
         // js_msg.header.stamp = this->now();
         js_msg.header.stamp = current_time_;
 
-        js_msg.name = {"joint_0", "joint_1", "joint_2"};
-        js_msg.position = {ik_result_.th_0, ik_result_.th_1, ik_result_.th_2};
+        // Motor angles [rad]
+        // // Actual angles and angle deviations from nominal
+        js_msg.name = {"joint_0", "joint_1", "joint_2", "d_joint_0", "d_joint_1", "d_joint_2"};
+        js_msg.position = {ik_result_.th_0, ik_result_.th_1, ik_result_.th_2, ik_result_.th_0 - ik_reset_origin_result_.th_0_nom, ik_result_.th_1 - ik_reset_origin_result_.th_1_nom, ik_result_.th_2 - ik_reset_origin_result_.th_2_nom};
         joint_pub_->publish(js_msg);
 
         // Optionally publish them as an array
         std_msgs::msg::Float64MultiArray angles_msg;
-        angles_msg.data = {ik_result_.th_0 * RM::r2d, ik_result_.th_1 * RM::r2d, ik_result_.th_2 * RM::r2d};
+        angles_msg.data = {ik_result_.th_0 * RM::r2d, 
+                           ik_result_.th_1 * RM::r2d, 
+                           ik_result_.th_2 * RM::r2d,
+                           (ik_result_.th_0 - ik_reset_origin_result_.th_0_nom) * RM::r2d,
+                           (ik_result_.th_1 - ik_reset_origin_result_.th_1_nom) * RM::r2d,
+                           (ik_result_.th_2 - ik_reset_origin_result_.th_2_nom) * RM::r2d};
         angles_pub_->publish(angles_msg);
     }
 
