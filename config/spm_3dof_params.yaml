@@ -24,3 +24,4 @@ geometric_params:
 
   # Initial z-rotation for re-origining the coordinate system (mechanical origin -> geometric origin)
   th_z_ee_reset: -60.0
+  # th_z_ee_reset: 0.0

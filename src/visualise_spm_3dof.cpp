@@ -217,7 +217,7 @@ private:
 
         std::cout << "th_z_ee_reset = " << th_z_ee_reset_ << std::endl;
         std::cout << "[nom] th_0_init, th_1_init, th_2_init = " << ik_reset_origin_result_.th_0_nom * RM::r2d << ", " << ik_reset_origin_result_.th_1_nom * RM::r2d << ", " << ik_reset_origin_result_.th_2_nom * RM::r2d << std::endl;
-        std::cout << "[nom] quat_ee_nom = " << ik_reset_origin_result_.quat_ee_nom.w() << ", " << ik_reset_origin_result_.quat_ee_nom.x() << ", " << ik_reset_origin_result_.quat_ee_nom.y() << ", " << ik_reset_origin_result_.quat_ee_nom.z() << std::endl;
+        std::cout << "[nom] quat_ubase_epl_c_nom = " << ik_reset_origin_result_.quat_ubase_epl_c_nom.w() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_nom.x() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_nom.y() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_nom.z() << std::endl;
 
         // std::cout << "ik_solver.s_0 = " << std::endl; ik_solver_->s_0_.log();
 
@@ -472,13 +472,13 @@ private:
         // double th = th_z_ee_reset_;
 
         double freq = 0.1;
-        double th = th_z_ee_reset_ * std::sin(2.0 * M_PI * freq * t_);
+        double th = 30.0f * std::sin(2.0 * M_PI * freq * t_);
 
         // double th = 0.0;
 
-        axis_ang_cmd_ = Vector4d(0.0, 0.0, 1.0, th);
+        // axis_ang_cmd_ = Vector4d(0.0, 0.0, 1.0, th);
         // axis_ang_cmd_ = Vector4d(0.0, 1.0, 0.0, th);
-        // axis_ang_cmd_ = Vector4d(1.0, 0.0, 0.0, th);
+        axis_ang_cmd_ = Vector4d(1.0, 0.0, 0.0, th);
 
         Vector3d so3 = (axis_ang_cmd_.head(3)).normalized() * axis_ang_cmd_(3) * RM::d2r;
         quat_cmd_ = RM::so32Quat(so3).cast<float>();
