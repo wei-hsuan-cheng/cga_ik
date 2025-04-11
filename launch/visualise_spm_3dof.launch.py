@@ -91,10 +91,19 @@ def generate_launch_description():
         output="screen",
         parameters=[geometric_params],
     )
+    
+    visualise_spm_3dof_non_oo_node = Node(
+        package="cga_ik",
+        executable="visualise_spm_3dof_non_oo",
+        name="visualise_spm_3dof_non_oo",
+        output="screen",
+        parameters=[geometric_params],
+    )
 
     nodes_to_start = [
                       robot_state_publisher_node,
-                      visualise_spm_3dof_node,       
+                      visualise_spm_3dof_node,
+                    #   visualise_spm_3dof_non_oo_node,       
                       ]
 
     return LaunchDescription(nodes_to_start)

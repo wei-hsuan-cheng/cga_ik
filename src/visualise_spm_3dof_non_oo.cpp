@@ -10,10 +10,9 @@
 #include <memory>
 
 #include "cga/cga_utils.hpp"
-#include "cga_ik_spm_3dof/cga_ik_spm_3dof.hpp"
+#include "cga_ik_spm_3dof/cga_ik_spm_3dof_non_oo.hpp"
 #include "robot_math_utils/robot_math_utils_v1_10.hpp"
 
-using namespace cga_ik_spm_3dof;
 using RM = RMUtils;
 
 struct TimeStampedPoint {
@@ -105,16 +104,14 @@ private:
     int krl_;
 
     CGA e_principal_, s_0_, s_1_;
+    cga_ik_spm_3dof::SPM3DoFIKResult ik_result_;
+
     Vector4f pivot_sphere_color_, motor_sphere_color_, elbow_sphere_color_, epl_sphere_color_;
     Vector4f utri_color_, ltri_color_, light_ray_color_, ee_traj_color_;
 
     // For the trajectory
     std::deque<TimeStampedPoint> trajectory_buffer_;
-    const double TRAIL_DURATION_SEC = 2.0; // keep last 2 seconds of end-effector path
-
-    // IK solver object and result
-    std::shared_ptr<CGAIKSPM3DoF> ik_solver_;
-    SPM3DoFIKResult ik_result_;
+    const double TRAIL_DURATION_SEC = 2.0; // keep last 2 seconds of EPT path
 
 
     void initTimeSpec()
@@ -180,18 +177,14 @@ private:
 
         // End-effector z-offset
         z_rot_cen_ee_ = 2.0f * r_s_m_;
+
+        // IK solver for the spm
+        ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_c_, ang_b_m_, r_b_, d_, r_e_, r_s_piv_, r_s_m_, r_s_elb_, r_s_epl_, z_rot_cen_ee_,
+                                                       krl_,
+                                                       e_principal_, s_0_, s_1_, 
+                                                       quat_cmd_);
+
         
-        // Construct IK solver
-        ik_solver_ = std::make_shared<CGAIKSPM3DoF>(
-        r_c_, ang_b_m_, r_b_, d_, r_e_,
-        r_s_piv_, r_s_m_, r_s_elb_, r_s_epl_,
-        z_rot_cen_ee_, krl_,
-        e_principal_, s_0_, s_1_
-        );
-
-        // Solve initial pose
-        ik_result_ = ik_solver_->computeIK(quat_cmd_);
-
         // Print robot geometric parameters
         std::cout << "--------------------------------------------------------------" << std::endl;
         std::cout << "---------- Geometric parameters of the spm [m, deg] ----------" << std::endl;
@@ -215,11 +208,7 @@ private:
         std::cout << "th_z_ee_init = " << th_z_ee_init_ << std::endl;
         std::cout << "th_0_init, th_1_init, th_2_init = " << ik_result_.th_0 * RM::r2d << ", " << ik_result_.th_1 * RM::r2d << ", " << ik_result_.th_2 * RM::r2d << std::endl;
 
-        // std::cout << "ik_solver.s_0 = " << std::endl; ik_solver_->s_0_.log();
-
         std::cout << "--------------------------------------------------------------" << std::endl;
-
-
     }
 
     void initRobotVisual()
@@ -412,9 +401,9 @@ private:
         {
             TimeStampedPoint new_pt;
             new_pt.stamp = current_time_;
-            new_pt.point.x = ik_solver_->pos_rot_cen_ee().x();
-            new_pt.point.y = ik_solver_->pos_rot_cen_ee().y();
-            new_pt.point.z = ik_solver_->pos_rot_cen_ee().z();
+            new_pt.point.x = ik_result_.pos_rot_cen_ee.x();
+            new_pt.point.y = ik_result_.pos_rot_cen_ee.y();
+            new_pt.point.z = ik_result_.pos_rot_cen_ee.z();
             trajectory_buffer_.push_back(new_pt);
 
             // Remove old points beyond TRAIL_DURATION_SEC
@@ -465,10 +454,10 @@ private:
         t_ = k_ * Ts_;
 
         // Target orientation for the IK problem
-        // double th = th_z_ee_init_;
+        double th = th_z_ee_init_;
 
-        double freq = 0.1;
-        double th = th_z_ee_init_ * std::sin(2.0 * M_PI * freq * t_);
+        // double freq = 0.1;
+        // double th = th_z_ee_init_ * std::sin(2.0 * M_PI * freq * t_);
 
         // double th = 0.0;
 
@@ -480,9 +469,14 @@ private:
         quat_cmd_ = RM::so32Quat(so3).cast<float>();
     }
 
-    void solveSPMIK() 
+    void solveIK() 
     {
-        ik_result_ = ik_solver_->computeIK(quat_cmd_);
+        // Call our CGA-based IK solver for the spm
+        ik_result_ = cga_ik_spm_3dof::computeSPM3DoFIK(r_c_, ang_b_m_, r_b_, d_, r_e_, r_s_piv_, r_s_m_, r_s_elb_, r_s_epl_, z_rot_cen_ee_,
+                                                       krl_,
+                                                       e_principal_, s_0_, s_1_, 
+                                                       quat_cmd_);
+        
     }
 
     void publishIKSolution()
@@ -504,37 +498,36 @@ private:
 
     void publishAllTransforms()
     {
-        // Poses w.r.t. the base
-        // Rotation centre
-        publishTF(ik_solver_->pos_base_rot_cen(), ik_solver_->quat_base_rot_cen(), "spm_rot_cen", "spm_base");
-
         // Poses w.r.t. the rotation centre
-        // Pivots of the robot
-        publishTF(ik_solver_->pos_rot_cen_piv_0(), ik_solver_->quat_rot_cen_piv_0(), "spm_pivot_0", "spm_rot_cen");
-        publishTF(ik_solver_->pos_rot_cen_piv_1(), ik_solver_->quat_rot_cen_piv_1(), "spm_pivot_1", "spm_rot_cen");
-        publishTF(ik_solver_->pos_rot_cen_piv_2(), ik_solver_->quat_rot_cen_piv_2(), "spm_pivot_2", "spm_rot_cen");
+        // Rotation centre
+        publishTF(ik_result_.pos_base_rot_cen, ik_result_.quat_base_rot_cen, "spm_rot_cen", "spm_base");
 
         // Motors of the robot
-        publishTF(ik_solver_->pos_rot_cen_m_0(), ik_solver_->quat_rot_cen_m_0(), "spm_motor_0", "spm_rot_cen");
-        publishTF(ik_solver_->pos_rot_cen_m_1(), ik_solver_->quat_rot_cen_m_1(), "spm_motor_1", "spm_rot_cen");
-        publishTF(ik_solver_->pos_rot_cen_m_2(), ik_solver_->quat_rot_cen_m_2(), "spm_motor_2", "spm_rot_cen");
-        
-        // End-plate corners and centre 
-        publishTF(ik_solver_->pos_rot_cen_epl_0(), ik_solver_->quat_rot_cen_epl_0(), "spm_epl_0", "spm_rot_cen");
-        publishTF(ik_solver_->pos_rot_cen_epl_1(), ik_solver_->quat_rot_cen_epl_1(), "spm_epl_1", "spm_rot_cen");
-        publishTF(ik_solver_->pos_rot_cen_epl_2(), ik_solver_->quat_rot_cen_epl_2(), "spm_epl_2", "spm_rot_cen");
-        publishTF(ik_solver_->pos_rot_cen_epl_c(), ik_solver_->quat_rot_cen_epl_c(), "spm_epl_c", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_m_0, ik_result_.quat_rot_cen_m_0, "spm_motor_0", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_m_1, ik_result_.quat_rot_cen_m_1, "spm_motor_1", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_m_2, ik_result_.quat_rot_cen_m_2, "spm_motor_2", "spm_rot_cen");
 
-        // End-point on the end-plate sphere
-        publishTF(ik_solver_->pos_rot_cen_ept(), ik_solver_->quat_rot_cen_ept(), "spm_ept", "spm_rot_cen");
+        // Pivots of the robot
+        publishTF(ik_result_.pos_rot_cen_piv_0, ik_result_.quat_rot_cen_piv_0, "spm_pivot_0", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_piv_1, ik_result_.quat_rot_cen_piv_1, "spm_pivot_1", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_piv_2, ik_result_.quat_rot_cen_piv_2, "spm_pivot_2", "spm_rot_cen");
+
+        // End-plate corners and centre 
+        publishTF(ik_result_.pos_rot_cen_epl_0, ik_result_.quat_rot_cen_epl_0, "spm_epl_0", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_epl_1, ik_result_.quat_rot_cen_epl_1, "spm_epl_1", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_epl_2, ik_result_.quat_rot_cen_epl_2, "spm_epl_2", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_epl_c, ik_result_.quat_rot_cen_epl_c, "spm_epl_c", "spm_rot_cen");
+
+        // End-point on the pivot sphere
+        publishTF(ik_result_.pos_rot_cen_ept, ik_result_.quat_rot_cen_ept, "spm_ept", "spm_rot_cen");
 
         // End-effector
-        publishTF(ik_solver_->pos_rot_cen_ee(), ik_solver_->quat_rot_cen_ee(), "spm_ee", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_ee, ik_result_.quat_rot_cen_ee, "spm_ee", "spm_rot_cen");
 
         // Elbows
-        publishTF(ik_solver_->pos_rot_cen_elb_0(), ik_solver_->quat_rot_cen_elb_0(), "spm_elbow_0", "spm_rot_cen");
-        publishTF(ik_solver_->pos_rot_cen_elb_1(), ik_solver_->quat_rot_cen_elb_1(), "spm_elbow_1", "spm_rot_cen");
-        publishTF(ik_solver_->pos_rot_cen_elb_2(), ik_solver_->quat_rot_cen_elb_2(), "spm_elbow_2", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_elb_0, ik_result_.quat_rot_cen_elb_0, "spm_elbow_0", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_elb_1, ik_result_.quat_rot_cen_elb_1, "spm_elbow_1", "spm_rot_cen");
+        publishTF(ik_result_.pos_rot_cen_elb_2, ik_result_.quat_rot_cen_elb_2, "spm_elbow_2", "spm_rot_cen");
 
     }
     
@@ -547,7 +540,7 @@ private:
             0,                // marker_id
             "spm_pivot_sphere",         // ns
             "spm_rot_cen",       // frame_id
-            ik_solver_->r_s_piv(),
+            ik_result_.r_s_piv,
             Vector3f::Zero(), // at rot_cen
             pivot_sphere_color_ // RGBA
         );
@@ -558,7 +551,7 @@ private:
             0,                // marker_id
             "spm_motor_sphere",         // ns
             "spm_rot_cen",       // frame_id
-            ik_solver_->r_s_m(),
+            ik_result_.r_s_m,
             Vector3f::Zero(), // at rot_cen
             motor_sphere_color_ // RGBA
         );
@@ -569,7 +562,7 @@ private:
             0,                // marker_id
             "spm_elbow_sphere",         // ns
             "spm_rot_cen",       // frame_id
-            ik_solver_->r_s_elb(),
+            ik_result_.r_s_elb,
             Vector3f::Zero(), // at rot_cen
             elbow_sphere_color_ // RGBA
         );
@@ -580,7 +573,7 @@ private:
             0,                // marker_id
             "spm_epl_sphere",         // ns
             "spm_rot_cen",       // frame_id
-            ik_solver_->r_s_epl(),
+            ik_result_.r_s_epl,
             Vector3f::Zero(), // at rot_cen
             epl_sphere_color_ // RGBA
         );
@@ -593,8 +586,8 @@ private:
                          "spm_ltri_0",         // ns
                          "spm_rot_cen",       // frame_id
                          Vector3f::Zero(), // at rot_cen
-                         ik_solver_->pos_rot_cen_elb_0(),
-                         ik_solver_->pos_rot_cen_m_0(),
+                         ik_result_.pos_rot_cen_elb_0,
+                         ik_result_.pos_rot_cen_m_0,
                          ltri_color_
                         );
         
@@ -604,8 +597,8 @@ private:
                          "spm_ltri_1",         // ns
                          "spm_rot_cen",       // frame_id
                          Vector3f::Zero(), // at rot_cen
-                         ik_solver_->pos_rot_cen_elb_1(),
-                         ik_solver_->pos_rot_cen_m_1(),
+                         ik_result_.pos_rot_cen_elb_1,
+                         ik_result_.pos_rot_cen_m_1,
                          ltri_color_
                         );
         
@@ -615,8 +608,8 @@ private:
                          "spm_ltri_2",         // ns
                          "spm_rot_cen",       // frame_id
                          Vector3f::Zero(), // at rot_cen
-                         ik_solver_->pos_rot_cen_elb_2(),
-                         ik_solver_->pos_rot_cen_m_2(),
+                         ik_result_.pos_rot_cen_elb_2,
+                         ik_result_.pos_rot_cen_m_2,
                          ltri_color_
                         );
 
@@ -627,8 +620,8 @@ private:
                          "spm_utri_0",         // ns
                          "spm_rot_cen",       // frame_id
                          Vector3f::Zero(), // at rot_cen
-                         ik_solver_->pos_rot_cen_elb_0(),
-                         ik_solver_->pos_rot_cen_epl_0(),
+                         ik_result_.pos_rot_cen_elb_0,
+                         ik_result_.pos_rot_cen_epl_0,
                          utri_color_
                         );
         
@@ -638,8 +631,8 @@ private:
                          "spm_utri_1",         // ns
                          "spm_rot_cen",       // frame_id
                          Vector3f::Zero(), // at rot_cen
-                         ik_solver_->pos_rot_cen_elb_1(),
-                         ik_solver_->pos_rot_cen_epl_1(),
+                         ik_result_.pos_rot_cen_elb_1,
+                         ik_result_.pos_rot_cen_epl_1,
                          utri_color_
                         );
         
@@ -649,8 +642,8 @@ private:
                          "spm_utri_2",         // ns
                          "spm_rot_cen",       // frame_id
                          Vector3f::Zero(), // at rot_cen
-                         ik_solver_->pos_rot_cen_elb_2(),
-                         ik_solver_->pos_rot_cen_epl_2(),
+                         ik_result_.pos_rot_cen_elb_2,
+                         ik_result_.pos_rot_cen_epl_2,
                          utri_color_
                         );
 
@@ -661,7 +654,7 @@ private:
                               "spm_light_ray",         // ns
                               "spm_ept",       // frame_id
                               Vector3f::Zero(), // at rot_cen
-                              Vector3f(0.0, 0.0, ik_solver_->r_s_elb() * 2.0f), // at spm_ept
+                              Vector3f(0.0, 0.0, ik_result_.r_s_elb * 2.0f), // at spm_ept
                               light_ray_color_
                             );
         
@@ -690,7 +683,7 @@ private:
         // Get IK target pose (orientation)
         getTargetPose();
         // Solve IK (joint angles) for the spm
-        solveSPMIK();
+        solveIK();
 
         auto end = std::chrono::steady_clock::now();
         double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
