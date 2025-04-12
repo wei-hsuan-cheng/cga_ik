@@ -53,29 +53,31 @@ namespace cga_utils {
     //-----------------------------------------------------------------
     inline CGA Grade(const CGA &m, int k) {
         CGA res;
-        if (k == 0) {
-            res = CGA(m[0], 0);
-        } else if (k == 1) {
-            res = CGA(m[1], 1) + CGA(m[2], 2) + CGA(m[3], 3)
-                + CGA(m[4], 4) + CGA(m[5], 5);
-        } else if (k == 2) {
-            for (int i = 6; i <= 15; i++) {
-                res = res + CGA(m[i], i);
-            }
-        } else if (k == 3) {
-            for (int i = 16; i <= 25; i++) {
-                res = res + CGA(m[i], i);
-            }
-        } else if (k == 4) {
-            for (int i = 26; i <= 30; i++) {
-                res = res + CGA(m[i], i);
-            }
-        } else if (k == 5) {
-            res = CGA(m[31], 31);
-        } else {
-            std::cout << "Grade error (k must be between 0 and 5)" << std::endl;
+        switch (k) {
+            case 0:
+                return CGA(m[0], 0);
+            case 1:
+                return CGA(m[1], 1) + CGA(m[2], 2) + CGA(m[3], 3) + CGA(m[4], 4) + CGA(m[5], 5);
+            case 2:
+                for (int i = 6; i <= 15; i++) {
+                    res = res + CGA(m[i], i);
+                }
+                return res;
+            case 3:
+                for (int i = 16; i <= 25; i++) {
+                    res = res + CGA(m[i], i);
+                }
+                return res;
+            case 4:
+                for (int i = 26; i <= 30; i++) {
+                    res = res + CGA(m[i], i);
+                }
+                return res;
+            case 5:
+                return CGA(m[31], 31);
+            default:
+                std::cout << "Grade error (k must be between 0 and 5)" << std::endl;
         }
-        return res;
     }
 
     //-----------------------------------------------------------------

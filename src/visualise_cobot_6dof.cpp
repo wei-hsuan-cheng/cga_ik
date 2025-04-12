@@ -40,7 +40,7 @@ public:
       "/mpu6050_imu/quat", 10,
       std::bind(&VisualiseCobot6DoF::quat_callback_, this, std::placeholders::_1));
 
-    cga_ik_joint_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/visualise_cobot_6dof/joint_states", 10);
+    cga_ik_joint_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/cobot_6dof/joint_states", 10);
     joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
     
     RCLCPP_INFO(this->get_logger(), "visualise_cobot_6dof node started.");
