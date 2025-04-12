@@ -29,7 +29,7 @@ cd ~/ros2_ws && colcon build --packages-select cga_ik && . install/setup.bash
 
 ## Demo
 
-Run the closed-form IK solver demo nodes for the two robots:
+Run the closed-form IK solver demo codes for the two robots:
 ```bash
 # Source your workspace
 cd ~/ros2_ws && . install/setup.bash
