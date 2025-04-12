@@ -80,7 +80,7 @@ Then, you will see the robots visualised in RViz2.
 ## Acknowledgements
 
 - **ganja.js**: The CGA class is an implementation adapted from the C++ template provided by [ganja.js](https://github.com/enkimute/ganja.js), an open-source geometric algebra library.
-- **Hugo's slides at GAME2020**: A lot of notations and implementations in this work is inspired by the work of [Hugo Hadfield](https://hh409.user.srcf.net) and his [slides at GAME2020](https://slides.com/hugohadfield/game2020).
+- **Hugo's slides at GAME2020**: A lot of notations and implementations in this work are inspired by the work of [Hugo Hadfield](https://hh409.user.srcf.net) and his [slides at GAME2020](https://slides.com/hugohadfield/game2020).
 - **Robot Math Utils**: Some utilities from [Robot Math Utils](https://github.com/wei-hsuan-cheng/robot_math_utils) are used.
 - **Eigen Library**: This library heavily relies on the Eigen library for linear algebra operations.
 
