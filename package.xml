@@ -3,12 +3,26 @@
 <package format="3">
   <name>cga_ik</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="johnathancheng0125@gmail.com">whcheng</maintainer>
-  <license>TODO: License declaration</license>
+  <description>Closed-form geometric inverse kinematics (IK) solver based on conformal geometric algebra (CGA).</description>
 
+  <maintainer email="johnathancheng0125@gmail.com">Wei-Hsuan Cheng</maintainer>
+  <license>MIT</license>
+
+  <!-- Build system -->
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <!-- Core dependencies -->
+  <depend>rclcpp</depend>
+  <depend>tf2_ros</depend>
+  <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>visualization_msgs</depend>
+
+  <!-- External libraries -->
+  <depend>eigen</depend>
+
+  <!-- Testing -->
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
