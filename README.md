@@ -8,14 +8,14 @@ CGA, in a simple and elegant way, provides numerous geometric insights into the 
 
 The IK solver have been implemented in ROS 2 C++ and tested on two robots:
 - 6-DoF collaborative robotic arm (TM5-700 and TM5-900)
-- 3-DoF spherical parallel manipulator (SPM)
+- 3-DoF spherical parallel manipulator (SPM).
 
 ## Table of Contents
 
 - [CGAIK](#cga-ik)
- - [Table of Contents](#table-of-contents)
- - [Installation](#installation)
- - [Demo](#demo)
+    - [Table of Contents](#table-of-contents)
+    - [Installation](#installation)
+    - [Demo](#demo)
 
 ## Installation
 
