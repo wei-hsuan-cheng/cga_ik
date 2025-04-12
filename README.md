@@ -10,7 +10,6 @@ The IK solver have been implemented in ROS 2 C++ and tested on two robots:
 - 6-DoF collaborative robotic arm (TM5-700 and TM5-900)
 - 3-DoF spherical parallel manipulator (SPM)
 
-
 ## Table of Contents
 
 - [CGAIK](#cga-ik)
