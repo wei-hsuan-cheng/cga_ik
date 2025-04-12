@@ -22,7 +22,7 @@ The IK solver have been implemented in ROS 2 humble C++ and tested on two robots
 
 ## Installation
 
-Clone and build the `cga_ik_action_interfaces` pkg first, where the `cga_ik` pkg relies on it:
+Clone and build the [`cga_ik_action_interfaces`](https://github.com/wei-hsuan-cheng/cga_ik_action_interfaces) pkg first, where the `cga_ik` pkg relies on it:
 ```bash
 cd ~/ros2_ws/src && git clone https://github.com/wei-hsuan-cheng/cga_ik_action_interfaces.git
 
