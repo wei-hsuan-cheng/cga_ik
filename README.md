@@ -41,7 +41,7 @@ ros2 launch cga_ik visualise_spm_3dof.launch.py
 ```
 
 Then, you will see the robots visualised in RViz2.
-<p align="center">
+<!-- <p align="center">
   <table>
     <tr>
       <td align="center">
@@ -54,7 +54,25 @@ Then, you will see the robots visualised in RViz2.
       </td>
     </tr>
   </table>
+</p> -->
+
+<p align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="/images/cobot_6dof_rviz.png" height="250px"/>
+        <br/>
+        <sub><b>6-DoF Collaborative Arm</b></sub>
+      </td>
+      <td align="center">
+        <img src="/images/spm_3dof_rviz.png" height="250px"/>
+        <br/>
+        <sub><b>3-DoF Spherical Parallel Manipulator</b></sub>
+      </td>
+    </tr>
+  </table>
 </p>
+
 
 
 
