@@ -12,6 +12,7 @@ def load_yaml_file_absolute_path(yaml_file):
         return yaml.safe_load(file)
 
 def generate_launch_description():
+    # ROS 2 params
     spm_3dof_params = os.path.join(
         get_package_share_directory("cga_ik"),
         "config",
@@ -19,6 +20,14 @@ def generate_launch_description():
     )
     geometric_params = load_yaml_file_absolute_path(spm_3dof_params).get("geometric_params", {})
 
+    # For robot state publisher
+    urdf_xacro_path = os.path.join(
+        get_package_share_directory("cga_ik"),
+        "config",
+        "spm_3dof.urdf.xacro",
+        # "spm_3dof_simplified.urdf.xacro",
+    )
+    
     # Lower parts
     r_c = str(geometric_params.get("r_c"))
     ang_b_m = str(geometric_params.get("ang_b_m"))
@@ -37,13 +46,6 @@ def generate_launch_description():
     th_z_ee_reset = str(geometric_params.get("th_z_ee_reset"))
     # SPM mode
     spm_mode = str(geometric_params.get("spm_mode"))
-
-    urdf_xacro_path = os.path.join(
-        get_package_share_directory("cga_ik"),
-        "config",
-        "spm_3dof.urdf.xacro",
-        # "spm_3dof_simplified.urdf.xacro",
-    )
     
     if not os.path.exists(urdf_xacro_path):
         raise FileNotFoundError(f"URDF file not found at {urdf_xacro_path}")
@@ -83,6 +85,15 @@ def generate_launch_description():
         )
     }
     
+    # Rviz config
+    rviz_base = os.path.join(
+        get_package_share_directory("cga_ik"), 
+        "launch"
+    )
+    rviz_config_file = os.path.join(rviz_base, "spm_3dof_rviz_config.rviz")
+
+    
+    # ROS 2 nodes
     robot_state_publisher_node = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
@@ -98,10 +109,20 @@ def generate_launch_description():
         output="screen",
         parameters=[geometric_params],
     )
+    
+    rviz_node = Node(
+        package="rviz2",
+        executable="rviz2",
+        name="rviz2",
+        output="log",
+        arguments=["-d", rviz_config_file],
+        parameters=[],
+    )
 
     nodes_to_start = [
                       robot_state_publisher_node,
                       visualise_spm_3dof_node,
+                      rviz_node,
                       ]
 
     return LaunchDescription(nodes_to_start)
