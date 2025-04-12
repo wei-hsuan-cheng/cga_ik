@@ -28,6 +28,7 @@ cd ~/ros2_ws && colcon build --packages-select cga_ik && . install/setup.bash
 
 ## Demo
 
+Run the closed-form IK solver demo nodes for the two robots:
 ```bash
 # Source the directory
 cd ~/ros2_ws && . install/setup.bash
@@ -38,6 +39,12 @@ ros2 launch cga_ik visualise_cobot_6dof.launch.py
 # For spm_3dof
 ros2 launch cga_ik visualise_spm_3dof.launch.py
 ```
+
+Then, you will see the robots visualised in RViz2
+
+<div align="center">
+<a href="https://github.com/wei-hsuan-cheng/cga_ik/images/cobot_6dof_rviz.png" target="_blank"><img src="https://github.com/wei-hsuan-cheng/cga_ik/images/cobot_6dof_rviz.png" alt="video" width="48%" /></a>
+</div>
 
 
 

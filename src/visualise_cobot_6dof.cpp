@@ -317,7 +317,7 @@ private:
     tf_msg.header.frame_id = "world";
     tf_msg.child_frame_id = "cga_ik_base";
     tf_msg.transform.translation.x = 0.0;
-    tf_msg.transform.translation.y = -1.0;
+    tf_msg.transform.translation.y = -0.5;
     tf_msg.transform.translation.z = 0.0;
     tf_msg.transform.rotation.w = 1.0;
     tf_msg.transform.rotation.x = 0.0;

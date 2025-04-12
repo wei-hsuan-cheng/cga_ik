@@ -18,18 +18,17 @@ def load_yaml_file_absolute_path(yaml_file):
         return yaml.safe_load(file)
 
 def generate_launch_description():
+    # ROS 2 params
     home_dir = os.path.expanduser("~")
     sup_tms_params = os.path.join(home_dir, "sup_tms/tmr_ws/config/sup_tms_params.yaml")
     
     cobot_dh_table = os.path.join(get_package_share_directory("cga_ik"), "config", "cobot_dh_table.yaml")
-    
-    urdf_path = os.path.join(get_package_share_directory("cga_ik"), "config", "tm5-700.urdf.xacro")
-    
     tm5_700_dh_table = load_yaml_file_absolute_path(cobot_dh_table).get("tm5-700", {})
     pose_f_tcp_params = load_yaml_file_absolute_path(sup_tms_params).get("pose_f_tcp_params", {})
     
+    # For robot state publisher
+    urdf_path = os.path.join(get_package_share_directory("cga_ik"), "config", "tm5-700.urdf.xacro")
     
-
     if not os.path.exists(urdf_path):
         raise FileNotFoundError(f"URDF file not found at {urdf_path}")
     
@@ -44,6 +43,14 @@ def generate_launch_description():
 
     robot_description = {"robot_description": robot_description_content}
     
+    # Rviz config
+    rviz_base = os.path.join(
+        get_package_share_directory("cga_ik"), 
+        "launch"
+    )
+    rviz_config_file = os.path.join(rviz_base, "cobot_6dof_rviz_config.rviz")
+    
+    # ROS 2 nodes
     robot_state_publisher_node = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
@@ -63,11 +70,19 @@ def generate_launch_description():
                     tm5_700_dh_table,],
     )
     
+    rviz_node = Node(
+        package="rviz2",
+        executable="rviz2",
+        name="rviz2",
+        output="log",
+        arguments=["-d", rviz_config_file],
+        parameters=[],
+    )
     
-
     nodes_to_start = [
                       robot_state_publisher_node,
-                      visualise_cobot_6dof_node,       
+                      visualise_cobot_6dof_node, 
+                      rviz_node,      
                       ]
 
     return LaunchDescription(nodes_to_start)
