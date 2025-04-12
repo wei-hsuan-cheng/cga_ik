@@ -44,15 +44,13 @@ class SPMActionServer : public rclcpp::Node
 {
 public:
   SPMActionServer()
-  : Node(node_name),
-    fs_(30.0),            
-    Ts_(1.0 / fs_)
+  : Node(node_name)
   {
     // Initialisation
-    fsm_state_   = SPMFSMState::IDLE; // Initial state duing the execution
-    stop_action_ = false;
     initTimeSpec();
+    initFSM();
     initSPMIK();
+    initRobotControl();
     initRobotVisual();
 
     // ROS 2 components
@@ -151,13 +149,20 @@ private:
   SPM3DoFIKResetOrigin ik_reset_origin_result_;
   SPM3DoFIKResult ik_result_;
 
+  // Motor joints command
+  Vector3f joint_angles_cmd_;
+
   // FSM
   bool stop_action_;
   std::mutex data_mutex_;
+  bool reorigined_;
 
   enum class SPMFSMState {
     IDLE,
+    INITIATE,
     RESET_ORIGIN,
+    REORIGINING,
+    REORIGINED,
     CONTROL,
     END,
   };
@@ -170,6 +175,13 @@ private:
       k_ = 0;
       t_ = 0.0;
       current_time_ = this->now();
+  }
+
+  void initFSM()
+  {
+    fsm_state_   = SPMFSMState::IDLE; // Initial state duing the execution
+    stop_action_ = false;
+    reorigined_ = false;
   }
 
   void initSPMIK()
@@ -206,7 +218,8 @@ private:
       this->get_parameter("r_s_epl", r_s_epl_);
       this->get_parameter("krl", krl_);
       this->get_parameter("th_z_ee_reset", th_z_ee_reset_);
-      this->get_parameter("spm_mode", spm_mode_);
+      // this->get_parameter("spm_mode", spm_mode_);
+      spm_mode_ = "CONTROL";
 
       // Initial IK target pose (quaternion orientation)
       quat_ubase_epl_c_cmd_ = Quaternionf::Identity();
@@ -277,11 +290,18 @@ private:
       std::cout << "[Re-origining angle] th_z_ee_reset [deg] = " << th_z_ee_reset_ << std::endl;
       std::cout << "[Re-origining orientation] quat_ubase_epl_c_reset = " << ik_reset_origin_result_.quat_ubase_epl_c_reset.w() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.x() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.y() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.z() << std::endl;
       std::cout << "[Re-origined IK nominal angles] th_0_nom, th_1_nom, th_2_nom [deg] = " << ik_reset_origin_result_.th_0_nom * RM::r2d << ", " << ik_reset_origin_result_.th_1_nom * RM::r2d << ", " << ik_reset_origin_result_.th_2_nom * RM::r2d << std::endl;
-      std::cout << "[Initial IK angles] th_0_init, th_1_init, th_2_init [deg] = " << ik_result_.th_0 * RM::r2d << ", " << ik_result_.th_1 * RM::r2d << ", " << ik_result_.th_2 * RM::r2d << std::endl;
+      std::cout << "[Initial Ivoid initSPMIK()K angles] th_0_init, th_1_init, th_2_init [deg] = " << ik_result_.th_0 * RM::r2d << ", " << ik_result_.th_1 * RM::r2d << ", " << ik_result_.th_2 * RM::r2d << std::endl;
       
       std::cout << "--------------------------------------------------------------" << std::endl;
 
 
+  }
+
+  void initRobotControl()
+  {
+    joint_angles_cmd_ << ik_reset_origin_result_.th_0_nom, /* Nominal motor angles */ 
+                         ik_reset_origin_result_.th_1_nom, 
+                         ik_reset_origin_result_.th_2_nom;
   }
 
   void initRobotVisual()
@@ -554,7 +574,7 @@ private:
 
   }
 
-  void publishIKSolution()
+  void sendJointCmd()
   {
       // Publish the joint states for these angles
       std_msgs::msg::Float64MultiArray angles_msg;
@@ -743,40 +763,9 @@ private:
 
   }
 
-  void debuggingInfo()
+  bool checkAchieveNewOrigin()
   {
-      // // Compute the are of the end-plate triangle
-
-      // // Compare the lengths
-      // std::cout << "(Pivot sphere radius) r_s_piv = d_rc_elb_i = " << ik_result_.r_s_piv << std::endl;
-      // std::cout << "(Elbow sphere radius) r_s_elb = d_rc_elp_i = " << ik_result_.r_s_elb << std::endl;
-      // std::cout << "d = d_rc_yc = " << ik_result_.d << std::endl;
-  }
-
-  void spm_callback_()
-  {
-      auto start = std::chrono::steady_clock::now();
-
-      // Get IK target pose (orientation)
-      getTargetPose();
-      // Solve IK (joint angles) for the spm
-      solveSPMIK();
-
-      auto end = std::chrono::steady_clock::now();
-      double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
-      double frequency = (elapsed_ms > 0.0) ? 1000.0 / elapsed_ms : 0.0;
-      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "Ts = %.2f [ms], fs = %.2f [Hz]", elapsed_ms, frequency);
-
-
-      current_time_ = this->now();
-      // Publish IK solution:
-      publishIKSolution();
-      // Publish all TF frames:
-      publishAllTransforms();
-      // Publish markers
-      publisherAllMarkers();
-      // Debugging
-      debuggingInfo();
+      return true;
   }
 
   // -------------
@@ -870,16 +859,7 @@ private:
         }
       }
 
-      {
-        std::lock_guard<std::mutex> lock(data_mutex_);
-        if (!true) {
-          RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM] Waiting for target ID selection. . .");
-          loop_rate.sleep();
-          continue;
-        }
-      }
-
-      // Evaluate the current pos_so3_error
+      // Publishing data
       {
         std::lock_guard<std::mutex> lock(data_mutex_);
 
@@ -888,9 +868,15 @@ private:
         feedback->current_angles.push_back(0.0);
         feedback->current_angles.push_back(1.0);
 
-
         // Publish feedback
         gh->publish_feedback(feedback);
+
+        current_time_ = this->now();
+
+        // Publish all TF frames:
+        publishAllTransforms();
+        // Publish markers
+        publisherAllMarkers();
 
       }
 
@@ -901,8 +887,19 @@ private:
         case SPMFSMState::IDLE:
         {
           RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM FSM] IDLE");
+          
           if (true) {
-            fsm_state_ = SPMFSMState::RESET_ORIGIN; // Start vision alignment
+            fsm_state_ = SPMFSMState::INITIATE;
+          }
+          break;
+        }
+
+        case SPMFSMState::INITIATE:
+        {
+          RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM FSM] INITIATE");
+          spm_mode_ = "CONTROL";
+          if (true) {
+            fsm_state_ = SPMFSMState::RESET_ORIGIN;
           }
           break;
         }
@@ -910,7 +907,50 @@ private:
         case SPMFSMState::RESET_ORIGIN:
         {
           RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM FSM] RESET_ORIGIN");
+          // Reset origin
+          ik_reset_origin_result_ = ik_solver_->resetOrigin(spm_mode_);
+          // Update the joint angles command for motors
+          joint_angles_cmd_ << ik_reset_origin_result_.th_0_nom, /* Nominal motor angles */ 
+                               ik_reset_origin_result_.th_1_nom, 
+                               ik_reset_origin_result_.th_2_nom;
+          
           if (true) {
+            fsm_state_ = SPMFSMState::REORIGINING;
+          }
+          break;
+        } 
+
+        case SPMFSMState::REORIGINING:
+        {
+          RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM FSM] REORIGINING");
+          
+          /* Robot is moving to the new origin
+           * Set reorigined_ as true when robot achieves the new origin.
+           */
+          sendJointCmd();
+          reorigined_ = checkAchieveNewOrigin();
+
+          if (reorigined_) {            
+            fsm_state_ = SPMFSMState::REORIGINED;
+          }
+          break;
+        }
+
+        case SPMFSMState::REORIGINED:
+        {
+          RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM FSM] REORIGINED");
+          
+          // Print re-originined joint angles
+          /* 
+           * Print joint angles feedback from the motor 
+           */
+
+          // Reset IK target pose to identity
+          quat_ubase_epl_c_cmd_ = Quaternionf::Identity();
+          // Solve IK (joint angles) for the spm
+          solveSPMIK();
+
+          if (true) {            
             fsm_state_ = SPMFSMState::CONTROL;
           }
           break;
@@ -919,8 +959,21 @@ private:
         case SPMFSMState::CONTROL:
         {
           RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM FSM] CONTROL");
-          // Call the SPM callback
-          spm_callback_();
+          
+          auto start = std::chrono::steady_clock::now();
+
+          // Get IK target pose (orientation)
+          getTargetPose();
+          // Solve IK (joint angles) for the spm
+          solveSPMIK();
+
+          auto end = std::chrono::steady_clock::now();
+          double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
+          double frequency = (elapsed_ms > 0.0) ? 1000.0 / elapsed_ms : 0.0;
+          // RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "Ts = %.2f [ms], fs = %.2f [Hz]", elapsed_ms, frequency);
+
+          // Send joint angles command
+          sendJointCmd();
 
           if (false) {
             fsm_state_ = SPMFSMState::END;
@@ -931,8 +984,9 @@ private:
         case SPMFSMState::END:
         {
           RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM FSM] END");
+          
           result->success = true;
-          result->message = "End loopping => SPM done.";
+          result->message = "End controlling robot => SPM done.";
           gh->succeed(result);
 
           fsm_state_ = SPMFSMState::IDLE;
