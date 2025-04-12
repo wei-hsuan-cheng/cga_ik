@@ -40,11 +40,7 @@ ros2 launch cga_ik visualise_cobot_6dof.launch.py
 ros2 launch cga_ik visualise_spm_3dof.launch.py
 ```
 
-Then, you will see the robots visualised in RViz2
-
-<div align="center">
-<a href="https://github.com/wei-hsuan-cheng/cga_ik/images/cobot_6dof_rviz.png" target="_blank"><img src="https://github.com/wei-hsuan-cheng/cga_ik/images/cobot_6dof_rviz.png" alt="video" width="48%" /></a>
-</div>
-
+Then, you will see the robots visualised in RViz2.
+<img src="/images/cobot_6dof_rviz.png" width="80%">
 
 
