@@ -13,9 +13,9 @@ The IK solver have been implemented in ROS 2 C++ and tested on two robots:
 ## Table of Contents
 
 - [CGAIK](#cga-ik)
-    - [Table of Contents](#table-of-contents)
-    - [Installation](#installation)
-    - [Demo](#demo)
+ - [Table of Contents](#table-of-contents)
+ - [Installation](#installation)
+ - [Demo](#demo)
 
 ## Installation
 
@@ -31,7 +31,7 @@ cd ~/ros2_ws && colcon build --packages-select cga_ik && . install/setup.bash
 
 Run the closed-form IK solver demo nodes for the two robots:
 ```bash
-# Source the directory
+# Source your workspace
 cd ~/ros2_ws && . install/setup.bash
 
 # For cobot_6dof
