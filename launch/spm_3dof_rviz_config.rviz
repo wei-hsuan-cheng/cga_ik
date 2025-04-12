@@ -329,6 +329,84 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /spm_3dof/markers/spm_pivot_sphere
       Value: false
+    - Class: rviz_default_plugins/Marker
+      Enabled: false
+      Name: Marker
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /spm_3dof/markers/spm_ltri_0
+      Value: false
+    - Class: rviz_default_plugins/Marker
+      Enabled: false
+      Name: Marker
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /spm_3dof/markers/spm_ltri_1
+      Value: false
+    - Class: rviz_default_plugins/Marker
+      Enabled: false
+      Name: Marker
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /spm_3dof/markers/spm_ltri_2
+      Value: false
+    - Class: rviz_default_plugins/Marker
+      Enabled: false
+      Name: Marker
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /spm_3dof/markers/spm_utri_0
+      Value: false
+    - Class: rviz_default_plugins/Marker
+      Enabled: false
+      Name: Marker
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /spm_3dof/markers/spm_utri_1
+      Value: false
+    - Class: rviz_default_plugins/Marker
+      Enabled: false
+      Name: Marker
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /spm_3dof/markers/spm_utri_2
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -375,25 +453,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 0.6113335490226746
+      Distance: 0.5302267074584961
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.03507677838206291
-        Y: -0.03919585049152374
-        Z: 0.19295328855514526
+        X: 0.03534529358148575
+        Y: -0.03255365788936615
+        Z: 0.20367981493473053
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.464797705411911
+      Pitch: 0.4547973871231079
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 5.276498317718506
+      Yaw: 5.296496868133545
     Saved: ~
 Window Geometry:
   Displays:
