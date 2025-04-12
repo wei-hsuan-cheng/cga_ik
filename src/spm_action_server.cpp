@@ -182,13 +182,13 @@ private:
   {
       fs_ = 60.0;
       Ts_ = 1.0 / fs_;
+      current_time_ = this->now();
   }
 
   void resetTime()
   {
     k_ = 0;
     t_ = 0.0;
-    current_time_ = this->now();
   }
   
   void initFSM()
