@@ -122,7 +122,7 @@ def generate_launch_description():
     nodes_to_start = [
                       robot_state_publisher_node,
                       spm_action_server_node,
-                    #   rviz_node,
+                      rviz_node,
                       ]
 
     return LaunchDescription(nodes_to_start)
