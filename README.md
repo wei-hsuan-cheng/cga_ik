@@ -6,7 +6,7 @@ Closed-form geometric inverse kinematics (IK) solver based on conformal geometri
 
 CGA, in a simple and elegant way, provides numerous geometric insights into the robot that are difficult or nearly impossible to achieve using traditional matrix methods. 
 
-The IK solver have been implemented in ROS 2 C++ and tested on two robots:
+The IK solver have been implemented in ROS 2 humble C++ and tested on two robots:
 - 6-DoF collaborative arms (TM5-700 and TM5-900)
 - 3-DoF spherical parallel manipulator (SPM, or agile eye).
 
