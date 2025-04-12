@@ -50,6 +50,7 @@ public:
     initTimeSpec();
     initFSM();
     initMotionParams();
+    loadYAMLParams();
     initSPMIK();
     initRobotControl();
     initRobotVisual();
@@ -169,7 +170,6 @@ private:
   enum class SPMFSMState {
     IDLE,
     INITIATE,
-    RESET_ORIGIN,
     REORIGINING,
     REORIGINED,
     CONTROL,
@@ -206,109 +206,111 @@ private:
     // axis_cmd_ = Vector3d(1.0, 0.0, 0.0);
   }
 
+  void loadYAMLParams()
+  {
+    // Lower parts
+    this->declare_parameter<float>("r_c", 1.0);
+    this->declare_parameter<float>("ang_b_m", 0.0);
+    this->declare_parameter<float>("r_b", 1.0);
+    // Upper parts
+    this->declare_parameter<float>("d", 1.0);
+    this->declare_parameter<float>("r_e", 1.0);
+    // Sphere radii
+    this->declare_parameter<float>("r_s_piv", 1.0);
+    this->declare_parameter<float>("r_s_m", 1.0);
+    this->declare_parameter<float>("r_s_elb", 1.0);
+    this->declare_parameter<float>("r_s_epl", 1.0);
+    // Elbow configuration
+    this->declare_parameter<int>("krl", 1);
+    // Re-origining the coordinate system (mechanical origin -> control origin); set initial z-rotation
+    this->declare_parameter<double>("th_z_ee_reset", 0.0);
+    // SPM mode
+    this->declare_parameter<std::string>("spm_mode", "HOME");
+  }
+
   void initSPMIK()
   {   
-      // Load SPM geometric params from yaml file
-      // Lower parts
-      this->declare_parameter<float>("r_c", 1.0);
-      this->declare_parameter<float>("ang_b_m", 0.0);
-      this->declare_parameter<float>("r_b", 1.0);
-      // Upper parts
-      this->declare_parameter<float>("d", 1.0);
-      this->declare_parameter<float>("r_e", 1.0);
-      // Sphere radii
-      this->declare_parameter<float>("r_s_piv", 1.0);
-      this->declare_parameter<float>("r_s_m", 1.0);
-      this->declare_parameter<float>("r_s_elb", 1.0);
-      this->declare_parameter<float>("r_s_epl", 1.0);
-      // Elbow configuration
-      this->declare_parameter<int>("krl", 1);
-      // Re-origining the coordinate system (mechanical origin -> control origin); set initial z-rotation
-      this->declare_parameter<double>("th_z_ee_reset", 0.0);
-      // SPM mode
-      this->declare_parameter<std::string>("spm_mode", "HOME");
+    // Retrieve parameters
+    this->get_parameter("r_c", r_c_);
+    this->get_parameter("ang_b_m", ang_b_m_);
+    this->get_parameter("r_b", r_b_);
+    this->get_parameter("d", d_);
+    this->get_parameter("r_e", r_e_);
+    this->get_parameter("r_s_piv", r_s_piv_);
+    this->get_parameter("r_s_m", r_s_m_);
+    this->get_parameter("r_s_elb", r_s_elb_);
+    this->get_parameter("r_s_epl", r_s_epl_);
+    this->get_parameter("krl", krl_);
+    this->get_parameter("th_z_ee_reset", th_z_ee_reset_);
+    spm_mode_ = "HOME";
 
-      // Retrieve parameters
-      this->get_parameter("r_c", r_c_);
-      this->get_parameter("ang_b_m", ang_b_m_);
-      this->get_parameter("r_b", r_b_);
-      this->get_parameter("d", d_);
-      this->get_parameter("r_e", r_e_);
-      this->get_parameter("r_s_piv", r_s_piv_);
-      this->get_parameter("r_s_m", r_s_m_);
-      this->get_parameter("r_s_elb", r_s_elb_);
-      this->get_parameter("r_s_epl", r_s_epl_);
-      this->get_parameter("krl", krl_);
-      this->get_parameter("th_z_ee_reset", th_z_ee_reset_);
-      spm_mode_ = "HOME";
+    // Initial IK target pose (quaternion orientation)
+    quat_ubase_epl_c_cmd_ = Quaternionf::Identity();
 
-      // Initial IK target pose (quaternion orientation)
-      quat_ubase_epl_c_cmd_ = Quaternionf::Identity();
+    // SPM coordinate system
+    // Principal axis of the 3-DoF spm
+    e_principal_ = e3;
 
-      // SPM coordinate system
-      // Principal axis of the 3-DoF spm
-      e_principal_ = e3;
+    // Each motor position is set in the base plane, separated by 120 [deg].
+    s_0_ = e1;
+    float ang_apart = 2.0 * M_PI / 3.0; // +120 [deg]
+    // float ang_apart = -2.0 * M_PI / 3.0; // -120 [deg]
+    CGA rot_e12 = cga_utils::rot(e1 * e2, ang_apart); // Rotate s_0_ by +-120 [deg] to get s_1_
+    s_1_ = rot_e12 * s_0_ * ~rot_e12;
 
-      // Each motor position is set in the base plane, separated by 120 [deg].
-      s_0_ = e1;
-      float ang_apart = 2.0 * M_PI / 3.0; // +120 [deg]
-      // float ang_apart = -2.0 * M_PI / 3.0; // -120 [deg]
-      CGA rot_e12 = cga_utils::rot(e1 * e2, ang_apart); // Rotate s_0_ by +-120 [deg] to get s_1_
-      s_1_ = rot_e12 * s_0_ * ~rot_e12;
+    // End-effector z-offset
+    z_rot_cen_ee_ = 2.0f * r_s_m_;
+    
+    // Construct IK solver
+    ik_solver_ = std::make_shared<CGAIKSPM3DoF>(
+    r_c_, ang_b_m_, r_b_, d_, r_e_,
+    r_s_piv_, r_s_m_, r_s_elb_, r_s_epl_,
+    z_rot_cen_ee_, krl_,
+    e_principal_, s_0_, s_1_,
+    th_z_ee_reset_
+    );
 
-      // End-effector z-offset
-      z_rot_cen_ee_ = 2.0f * r_s_m_;
-      
-      // Construct IK solver
-      ik_solver_ = std::make_shared<CGAIKSPM3DoF>(
-      r_c_, ang_b_m_, r_b_, d_, r_e_,
-      r_s_piv_, r_s_m_, r_s_elb_, r_s_epl_,
-      z_rot_cen_ee_, krl_,
-      e_principal_, s_0_, s_1_,
-      th_z_ee_reset_
-      );
+    // Re-origining
+    ik_reset_origin_result_ = ik_solver_->resetOrigin(spm_mode_);
+    // Solve initial pose
+    ik_result_ = ik_solver_->solveIK(quat_ubase_epl_c_cmd_);
 
-      // Re-origining
-      ik_reset_origin_result_ = ik_solver_->resetOrigin(spm_mode_);
-      // Solve initial pose
-      ik_result_ = ik_solver_->solveIK(quat_ubase_epl_c_cmd_);
-
-      // IK joint angles [rad]
-      ik_joint_angles_ << ik_result_.th_0, /* Actual motor angles */ 
-                          ik_result_.th_1, 
-                          ik_result_.th_2,
-                          ik_reset_origin_result_.th_0_nom, /* Nominal motor angles */ 
-                          ik_reset_origin_result_.th_1_nom, 
-                          ik_reset_origin_result_.th_2_nom,
-                          ik_result_.th_0 - ik_reset_origin_result_.th_0_nom, /* Deviated motor angles */
-                          ik_result_.th_1 - ik_reset_origin_result_.th_1_nom,
-                          ik_result_.th_2 - ik_reset_origin_result_.th_2_nom;
+    // IK joint angles [rad]
+    ik_joint_angles_ << ik_result_.th_0, /* Actual motor angles */ 
+                        ik_result_.th_1, 
+                        ik_result_.th_2,
+                        ik_reset_origin_result_.th_0_nom, /* Nominal motor angles */ 
+                        ik_reset_origin_result_.th_1_nom, 
+                        ik_reset_origin_result_.th_2_nom,
+                        ik_result_.th_0 - ik_reset_origin_result_.th_0_nom, /* Deviated motor angles */
+                        ik_result_.th_1 - ik_reset_origin_result_.th_1_nom,
+                        ik_result_.th_2 - ik_reset_origin_result_.th_2_nom;
 
 
 
-      // Print SPM geometric parameters
-      std::cout << "--------------------------------------------------------------" << std::endl;
-      std::cout << "---------- Geometric parameters of the spm [m, deg] ----------" << std::endl;
-      std::cout << "--------------------------------------------------------------" << std::endl;
+    // Print SPM geometric parameters
+    std::cout << "--------------------------------------------------------------" << std::endl;
+    std::cout << "---------- Geometric parameters of the spm [m, deg] ----------" << std::endl;
+    std::cout << "--------------------------------------------------------------" << std::endl;
 
-      std::cout << "[Lower parts]" << std::endl;
-      std::cout << "r_c = " << r_c_ << std::endl;
-      std::cout << "ang_b_m = " << ang_b_m_ << std::endl;
-      std::cout << "r_b = " << r_b_ << std::endl;
-      
-      std::cout << "[Upper parts]" << std::endl;
-      std::cout << "d = " << d_ << std::endl;
-      std::cout << "r_e = " << r_e_ << std::endl;
+    std::cout << "[Lower parts]" << std::endl;
+    std::cout << "r_c = " << r_c_ << std::endl;
+    std::cout << "ang_b_m = " << ang_b_m_ << std::endl;
+    std::cout << "r_b = " << r_b_ << std::endl;
+    
+    std::cout << "[Upper parts]" << std::endl;
+    std::cout << "d = " << d_ << std::endl;
+    std::cout << "r_e = " << r_e_ << std::endl;
 
-      std::cout << "[Sphere radii]" << std::endl;
-      std::cout << "r_s_piv = " << r_s_piv_ << std::endl;
-      std::cout << "r_s_m = " << r_s_m_ << std::endl;
-      std::cout << "r_s_elb = " << r_s_elb_ << std::endl;
-      std::cout << "r_s_epl = " << r_s_epl_ << std::endl;
+    std::cout << "[Sphere radii]" << std::endl;
+    std::cout << "r_s_piv = " << r_s_piv_ << std::endl;
+    std::cout << "r_s_m = " << r_s_m_ << std::endl;
+    std::cout << "r_s_elb = " << r_s_elb_ << std::endl;
+    std::cout << "r_s_epl = " << r_s_epl_ << std::endl;
 
-      std::cout << "[Initial IK angles] th_0_init, th_1_init, th_2_init [deg] = " << ik_result_.th_0 * RM::r2d << ", " << ik_result_.th_1 * RM::r2d << ", " << ik_result_.th_2 * RM::r2d << std::endl;
-      
-      std::cout << "--------------------------------------------------------------" << std::endl;
+    std::cout << "[Initial IK angles] th_0_init, th_1_init, th_2_init [deg] = " << ik_result_.th_0 * RM::r2d << ", " << ik_result_.th_1 * RM::r2d << ", " << ik_result_.th_2 * RM::r2d << std::endl;
+    
+    std::cout << "--------------------------------------------------------------" << std::endl;
 
 
   }
@@ -555,6 +557,17 @@ private:
       ee_traj_pub_->publish(traj_marker);
   }
 
+  void getReoriginingPose()
+  {
+      // Update time
+      t_ = k_ * Ts_;
+      k_ += 1;
+
+      // Target orientation for the IK problem
+      double th = (th_z_ee_reset_ * RM::d2r) * (1.0 - exp(- t_ / 1.0));
+      quat_ubase_epl_c_cmd_ = RM::so32Quat( Vector3d(0.0, 0.0, 1.0) * th ).cast<float>();
+  }
+
   void getTargetPose()
   {
       // Update time
@@ -563,7 +576,6 @@ private:
 
       // Target orientation for the IK problem
       th_cmd_ = (th_cmd_mag_ * RM::d2r) * std::sin(2.0 * M_PI * freq_cmd_ * t_);
-
       quat_ubase_epl_c_cmd_ = RM::so32Quat( axis_cmd_.normalized() * th_cmd_ ).cast<float>();
   }
 
@@ -787,7 +799,11 @@ private:
 
   bool checkAchieveNewOrigin()
   {
-      return true;
+    // Check if the re-origining is achieved
+    Quaternionf relative_quat = quat_ubase_epl_c_cmd_.inverse() * RM::Quatz(th_z_ee_reset_ * RM::d2r).cast<float>();
+    Vector3d relative_so3 = RM::Quat2so3(relative_quat.cast<double>());
+
+    return ( relative_so3.norm() < 0.1 * RM::d2r ) ? true : false;
   }
 
   bool checkFinishTask()
@@ -814,9 +830,13 @@ private:
       return rclcpp_action::GoalResponse::REJECT;
     }
 
-    // Update parameters each time goal is accepted
-    // Re-initiate the FSM
+    // Re-initialise each time goal is accepted
+    initTimeSpec();
     initFSM();
+    initMotionParams();
+    initSPMIK();
+    initRobotControl();
+    initRobotVisual();
 
     RCLCPP_INFO(this->get_logger(), "Goal accepted => start SPM!");
     return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
@@ -902,39 +922,25 @@ private:
         case SPMFSMState::INITIATE:
         {
           RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM FSM] INITIATE");
-          spm_mode_ = "CONTROL";
-          std::cout << "[SPM mode]: " << spm_mode_ << std::endl;
 
-          if (true) {
-            fsm_state_ = SPMFSMState::RESET_ORIGIN;
-          }
-          break;
-        }
-          
-        case SPMFSMState::RESET_ORIGIN:
-        {
-          RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM FSM] RESET_ORIGIN");
-          // Reset origin
-          ik_reset_origin_result_ = ik_solver_->resetOrigin(spm_mode_);
-          // Update the joint angles command for motors
-          joint_angles_cmd_ << ik_reset_origin_result_.th_0_nom, /* Nominal motor angles */ 
-                               ik_reset_origin_result_.th_1_nom, 
-                               ik_reset_origin_result_.th_2_nom;
-          
-          std::cout << "[Re-origining angle] th_z_ee_reset [deg] = " << th_z_ee_reset_ << std::endl;
-          std::cout << "[Re-origining orientation] quat_ubase_epl_c_reset = " << ik_reset_origin_result_.quat_ubase_epl_c_reset.w() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.x() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.y() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.z() << std::endl;
-          std::cout << "[Re-origined IK nominal angles] th_0_nom, th_1_nom, th_2_nom [deg] = " << ik_reset_origin_result_.th_0_nom * RM::r2d << ", " << ik_reset_origin_result_.th_1_nom * RM::r2d << ", " << ik_reset_origin_result_.th_2_nom * RM::r2d << std::endl;
-          
+          // Reset time
+          k_ = 0.0;
+          t_ = k_ * Ts_;
+
           if (true) {
             fsm_state_ = SPMFSMState::REORIGINING;
           }
           break;
-        } 
+        }
 
         case SPMFSMState::REORIGINING:
         {
           RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM FSM] REORIGINING");
           
+          // Re-origining pose
+          getReoriginingPose();
+          // Solve IK (joint angles) for the spm
+          solveSPMIK();
           // Send joint angles command (moving to the new origin)
           sendJointCmd();
           // Check if new origin is achieved
@@ -949,6 +955,23 @@ private:
         case SPMFSMState::REORIGINED:
         {
           RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM FSM] REORIGINED");
+
+          // Change SPM mode to control
+          spm_mode_ = "CONTROL";
+          std::cout << "[SPM mode]: " << spm_mode_ << std::endl;
+          
+          // Reset origin after finishing re-origining
+          ik_reset_origin_result_ = ik_solver_->resetOrigin(spm_mode_);
+          
+          // Update the joint angles command for motors
+          joint_angles_cmd_ << ik_reset_origin_result_.th_0_nom, /* Nominal motor angles */ 
+                               ik_reset_origin_result_.th_1_nom, 
+                               ik_reset_origin_result_.th_2_nom;
+          
+          std::cout << "[Re-origining angle] th_z_ee_reset [deg] = " << th_z_ee_reset_ << std::endl;
+          std::cout << "[Re-origining orientation] quat_ubase_epl_c_reset = " << ik_reset_origin_result_.quat_ubase_epl_c_reset.w() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.x() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.y() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.z() << std::endl;
+          std::cout << "[Re-origined IK nominal angles] th_0_nom, th_1_nom, th_2_nom [deg] = " << ik_reset_origin_result_.th_0_nom * RM::r2d << ", " << ik_reset_origin_result_.th_1_nom * RM::r2d << ", " << ik_reset_origin_result_.th_2_nom * RM::r2d << std::endl;
+          
           
           // Print re-originined joint angles
           /* 
@@ -957,6 +980,10 @@ private:
 
           // Reset IK target pose to identity
           quat_ubase_epl_c_cmd_ = Quaternionf::Identity();
+
+          // Reset time
+          k_ = 0.0;
+          t_ = k_ * Ts_;
 
           if (true) {            
             fsm_state_ = SPMFSMState::CONTROL;
