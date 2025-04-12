@@ -64,7 +64,7 @@ Then, you will see the robots visualised in RViz2.
 
 ## Bibliography
 - CGA class:
-  - [1] Christian Perwass. Geometric Algebra with Applications in Engineering. Springer Series in Geometry and Computing. Springer, 2009. isbn: 9783540890676.
+  - [1] [Christian Perwass. Geometric Algebra with Applications in Engineering. Springer Series in Geometry and Computing. Springer, 2009. isbn: 9783540890676.](https://link.springer.com/content/pdf/10.1007/978-3-540-89068-3.pdf)
   - [2] [ganja.js](https://github.com/enkimute/ganja.js)
 - Cobot IK solution:
   - [1] [A. Kleppe and O. Egeland. Inverse kinematics for industrial robots using conformal geometric algebra. Modeling, Identification and Control. 2016.](https://www.mic-journal.no/ABS/MIC-2016-1-6.asp/)
