@@ -22,6 +22,17 @@ The IK solver have been implemented in ROS 2 humble C++ and tested on two robots
 
 ## Installation
 
+Clone and build the `cga_ik_action_interfaces` pkg first, where the `cga_ik` pkg relies on it:
+```bash
+cd ~/ros2_ws/src && git clone https://github.com/wei-hsuan-cheng/cga_ik_action_interfaces.git
+
+cd ~/ros2_ws && rosdep update && rosdep install --from-paths src --ignore-src -r -y
+
+cd ~/ros2_ws && colcon build --packages-select cga_ik_action_interfaces && . install/setup.bash
+```
+
+
+Then, clone and build the `cga_ik` pkg:
 ```bash
 cd ~/ros2_ws/src && git clone https://github.com/wei-hsuan-cheng/cga_ik.git
 
@@ -37,11 +48,12 @@ Run the closed-form IK solver demo codes for the two robots:
 # Source your workspace
 cd ~/ros2_ws && . install/setup.bash
 
-# For cobot_6dof
+# Visualise cobot_6dof and spm_3dof
 ros2 launch cga_ik visualise_cobot_6dof.launch.py
-
-# For spm_3dof
 ros2 launch cga_ik visualise_spm_3dof.launch.py
+
+# Control the spm_3dof
+ros2 launch cga_ik control_spm.launch.py
 ```
 
 Then, you will see the robots visualised in RViz2.
