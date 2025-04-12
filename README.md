@@ -12,7 +12,7 @@ The IK solver have been implemented in ROS 2 C++ and tested on two robots:
 
 ## Table of Contents
 
-- [CGAIK](#cga-ik)
+- [CGAIK](https://github.com/wei-hsuan-cheng/cga_ik.git)
     - [Table of Contents](#table-of-contents)
     - [Installation](#installation)
     - [Demo](#demo)
