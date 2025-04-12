@@ -16,6 +16,9 @@ The IK solver have been implemented in ROS 2 C++ and tested on two robots:
     - [Table of Contents](#table-of-contents)
     - [Installation](#installation)
     - [Demo](#demo)
+    - [Bibliography](#bibliography)
+    - [Acknowledgements](#acknowledgements)
+    - [Contact](#contact)
 
 ## Installation
 
@@ -58,6 +61,31 @@ Then, you will see the robots visualised in RViz2.
     </tr>
   </table>
 </p>
+
+## Bibliography
+- CGA class:
+  - [1] https://github.com/enkimute/ganja.js/blob/master/codegen/cpp/cga.cpp
+- Cobot IK solution:
+  - [1] https://www.mic-journal.no/ABS/MIC-2016-1-6.asp/
+  - [2] https://www.sciencedirect.com/science/article/pii/S0094114X22001045
+  - [3] https://slides.com/hugohadfield/game2020
+- SPM IK solution:
+  - [1] https://slides.com/hugohadfield/game2020
+  - [2] https://enkimute.github.io/ganja.js/examples/coffeeshop.html#2DmBscfSXO
+
+## Acknowledgements
+
+- **ganja.js**: The CGA class is an implementation adapted from the C++ template provided by [ganja.js](https://github.com/enkimute/ganja.js), an open-source geometric algebra library.
+- **Hugo's slides at GAME2020**: A lot of notations and implementation of this repo is inspired by the work of Hugo Hadfield [Hugo Hadfield](https://hh409.user.srcf.net).
+- **Robot Math Utils**: Some utilities from [Robot Math Utils](https://github.com/wei-hsuan-cheng/robot_math_utils) is used.
+- **Eigen Library**: This library heavily relies on the Eigen library for linear algebra operations.
+
+## Contact
+
+- **Author**: Wei-Hsuan Cheng [(johnathancheng0125@gmail.com)](mailto:johnathancheng0125@gmail.com)
+- **GitHub**: [wei-hsuan-cheng](https://github.com/wei-hsuan-cheng)
+
+
 
 
 

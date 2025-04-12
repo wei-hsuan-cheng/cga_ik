@@ -1,3 +1,14 @@
+/*
+cga_ik_spm_3dof, an inverse kinematics (IK) solver for 3-DoF spherical parallel manipulatro (SPM) based on conformal geometric algebra (CGA)
+Written by wei-hsuan-cheng
+
+References for this code:
+https://slides.com/hugohadfield/game2020
+
+A JavaScript implementaton can also be found at:
+https://enkimute.github.io/ganja.js/examples/coffeeshop.html#2DmBscfSXO
+*/
+
 #ifndef CGA_IK_SPM_3DOF_HPP
 #define CGA_IK_SPM_3DOF_HPP
 
