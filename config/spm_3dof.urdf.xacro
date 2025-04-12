@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro"  name="spm_3dof">
 
-    <!-- This will include all the contents of example_include.xacro first. Go check it out! -->
-    <xacro:include filename="example_include.xacro" />
+    <!-- Load properties defined in other xacro files -->
+    <xacro:include filename="colors.xacro" />
 
     <!-- Load spm_3dof geometric parameters: -->
     <xacro:arg name="r_c" default="1.0" />

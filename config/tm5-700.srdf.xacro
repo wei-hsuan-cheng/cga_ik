@@ -65,42 +65,4 @@
     <disable_collisions link1="link_4" link2="link_5" reason="Adjacent"/>
     <disable_collisions link1="link_4" link2="link_6" reason="Never"/>
     <disable_collisions link1="link_5" link2="link_6" reason="Adjacent"/>
-
-    <!-- <disable_collisions link1="link_6" link2="robotiq_85_base_link" reason="Adjacent"/> -->
-
-    <!-- <disable_collisions link1="link_6" link2="tm5-700rs_adapter" reason="Adjacent"/>
-    <disable_collisions link1="tm5-700rs_adapter" link2="camera_bottom_screw_frame" reason="Adjacent"/>
-    <disable_collisions link1="camera_bottom_screw_frame" link2="camera_link" reason="Never"/>
-    <disable_collisions link1="tm5-700rs_adapter" link2="robotiq_85_base_link" reason="Adjacent"/> -->
-
-    <!-- <disable_collisions link1="robotiq_85_base_link" link2="robotiq_85_left_knuckle_link" reason="Adjacent"/>
-    <disable_collisions link1="robotiq_85_base_link" link2="robotiq_85_right_knuckle_link" reason="Adjacent"/>
-    <disable_collisions link1="robotiq_85_base_link" link2="robotiq_85_left_finger_link" reason="Never"/>
-    <disable_collisions link1="robotiq_85_base_link" link2="robotiq_85_right_finger_link" reason="Never"/>
-    <disable_collisions link1="robotiq_85_base_link" link2="robotiq_85_left_inner_knuckle_link" reason="Never"/>
-    <disable_collisions link1="robotiq_85_base_link" link2="robotiq_85_right_inner_knuckle_link" reason="Never"/>
-    <disable_collisions link1="robotiq_85_base_link" link2="robotiq_85_left_finger_tip_link" reason="Never"/>
-    <disable_collisions link1="robotiq_85_base_link" link2="robotiq_85_right_finger_tip_link" reason="Never"/>
-    <disable_collisions link1="robotiq_85_left_knuckle_link" link2="robotiq_85_left_finger_link" reason="Adjacent"/>
-    <disable_collisions link1="robotiq_85_right_knuckle_link" link2="robotiq_85_right_finger_link" reason="Adjacent"/>
-    <disable_collisions link1="robotiq_85_right_finger_link" link2="robotiq_85_left_finger_link" reason="Never"/>
-    <disable_collisions link1="robotiq_85_right_knuckle_link" link2="robotiq_85_left_knuckle_link" reason="Never"/>
-    <disable_collisions link1="robotiq_85_right_finger_link" link2="robotiq_85_left_knuckle_link" reason="Never"/>
-    <disable_collisions link1="robotiq_85_left_finger_link" link2="robotiq_85_right_knuckle_link" reason="Never"/>
-    <disable_collisions link1="robotiq_85_left_finger_link" link2="robotiq_85_left_finger_tip_link" reason="Adjacent"/>
-    <disable_collisions link1="robotiq_85_right_finger_link" link2="robotiq_85_right_finger_tip_link" reason="Adjacent"/>
-    <disable_collisions link1="robotiq_85_right_inner_knuckle_link" link2="robotiq_85_right_finger_tip_link" reason="Adjacent"/>
-    <disable_collisions link1="robotiq_85_left_inner_knuckle_link" link2="robotiq_85_left_finger_tip_link" reason="Adjacent"/>
-    
-
-    <disable_collisions link1="link_6" link2="robotiq_85_base_link" reason="Never"/>
-    <disable_collisions link1="link_6" link2="robotiq_85_left_knuckle_link" reason="Never"/>
-    <disable_collisions link1="link_6" link2="robotiq_85_right_knuckle_link" reason="Never"/>
-    <disable_collisions link1="link_6" link2="robotiq_85_left_finger_link" reason="Never"/>
-    <disable_collisions link1="link_6" link2="robotiq_85_right_finger_link" reason="Never"/>
-    <disable_collisions link1="link_6" link2="robotiq_85_left_finger_tip_link" reason="Never"/>
-    <disable_collisions link1="link_6" link2="robotiq_85_right_finger_tip_link" reason="Never"/>
-    <disable_collisions link1="link_6" link2="robotiq_85_left_inner_knuckle_link" reason="Never"/>
-    <disable_collisions link1="link_6" link2="robotiq_85_right_inner_knuckle_link" reason="Never"/>
-    <disable_collisions link1="robotiq_85_right_finger_tip_link" link2="robotiq_85_left_finger_tip_link" reason="Never"/> -->
 </robot>

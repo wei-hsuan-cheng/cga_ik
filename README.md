@@ -8,7 +8,7 @@ CGA, in a simple and elegant way, provides numerous geometric insights into the 
 
 The IK solver have been implemented in ROS 2 C++ and tested on two robots:
 - 6-DoF collaborative arms (TM5-700 and TM5-900)
-- 3-DoF spherical parallel manipulator (SPM).
+- 3-DoF spherical parallel manipulator (SPM, or agile eye).
 
 ## Table of Contents
 
@@ -64,14 +64,18 @@ Then, you will see the robots visualised in RViz2.
 
 ## Bibliography
 - CGA class:
-  - [1] https://github.com/enkimute/ganja.js/blob/master/codegen/cpp/cga.cpp
+  - [1] Christian Perwass. Geometric Algebra with Applications in Engineering. Springer Series in Geometry and Computing. Springer, 2009. isbn: 9783540890676.
+  - [2] [ganja.js](https://github.com/enkimute/ganja.js)
 - Cobot IK solution:
-  - [1] https://www.mic-journal.no/ABS/MIC-2016-1-6.asp/
-  - [2] https://www.sciencedirect.com/science/article/pii/S0094114X22001045
-  - [3] https://slides.com/hugohadfield/game2020
+  - [1] [A. Kleppe and O. Egeland. Inverse kinematics for industrial robots using conformal geometric algebra. Modeling, Identification and Control. 2016.](https://www.mic-journal.no/ABS/MIC-2016-1-6.asp/)
+  - [2] [I. Zaplana, H. Hadfield, and J. Lasenby, “Closed-form solutions for the inverse kinematics of serial robots using conformal geometric algebra,” Mech. Mach. Theory, vol. 173, Jul. 2022, Art. no. 104835.](https://www.sciencedirect.com/science/article/pii/S0094114X22001045)
+  - [3] [Slides at GAME2020: Robots, Ganja and Screw Theory](https://slides.com/hugohadfield/game2020)
 - SPM IK solution:
-  - [1] https://slides.com/hugohadfield/game2020
-  - [2] https://enkimute.github.io/ganja.js/examples/coffeeshop.html#2DmBscfSXO
+  - [1] S. Sadeqi, S. P. Bourgeois, E. J. Park, and S. Arzanpour, ‘‘Design and performance analysis of a 3-RRR spherical parallel manipulator for hip exoskeleton applications,’’ J. Rehabil. Assistive Technol. Eng., vol. 4, Sep. 2017, Art. no. 2055668317697596.
+  - [2] S. Bai, M. R. Hansen, and T. O. Andersen, “Modelling of a special class of spherical parallel manipulators with Euler parameters,” Robotica, vol. 27, no. 2, pp. 161–170, 2008.
+  - [3] [Slides at GAME2020: Robots, Ganja and Screw Theory](https://slides.com/hugohadfield/game2020)
+  - [4] [JavaScript visualisation of 3-DoF agile eye](https://enkimute.github.io/ganja.js/examples/coffeeshop.html#2DmBscfSXO)
+  
 
 ## Acknowledgements
 
