@@ -48,6 +48,7 @@ public:
   {
     // Initialisation
     initTimeSpec();
+    resetTime();
     initFSM();
     initMotionParams();
     loadYAMLParams();
@@ -182,13 +183,16 @@ private:
       fs_ = 60.0;
       Ts_ = 1.0 / fs_;
   }
-  
-  void initFSM()
+
+  void resetTime()
   {
     k_ = 0;
     t_ = 0.0;
     current_time_ = this->now();
-
+  }
+  
+  void initFSM()
+  {
     fsm_state_   = SPMFSMState::IDLE; // Initial state duing the execution
     stop_action_ = false;
     reorigined_ = false;
@@ -832,6 +836,7 @@ private:
 
     // Re-initialise each time goal is accepted
     initTimeSpec();
+    resetTime();
     initFSM();
     initMotionParams();
     initSPMIK();
@@ -874,7 +879,10 @@ private:
     while (rclcpp::ok()) {
       if (gh->is_canceling()) {
         RCLCPP_WARN(this->get_logger(), "[SPM] Canceled by client!");
-        k_ = 0;
+        
+        // Reset time
+        resetTime();
+
         result->success = false;
         result->message = "Canceled by client";
         gh->canceled(result);
@@ -924,8 +932,7 @@ private:
           RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM FSM] INITIATE");
 
           // Reset time
-          k_ = 0.0;
-          t_ = k_ * Ts_;
+          resetTime();
 
           if (true) {
             fsm_state_ = SPMFSMState::REORIGINING;
@@ -982,8 +989,7 @@ private:
           quat_ubase_epl_c_cmd_ = Quaternionf::Identity();
 
           // Reset time
-          k_ = 0.0;
-          t_ = k_ * Ts_;
+          resetTime();
 
           if (true) {            
             fsm_state_ = SPMFSMState::CONTROL;
