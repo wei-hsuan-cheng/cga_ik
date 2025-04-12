@@ -17,6 +17,7 @@ using Eigen::Vector3f;
 using Eigen::Vector4f;
 using Vector6f = Eigen::Matrix<float, 6, 1>;
 using Vector7f = Eigen::Matrix<float, 7, 1>;
+using Vector9f = Eigen::Matrix<float, 9, 1>;
 using Eigen::VectorXf;
 
 using cga::CGA;

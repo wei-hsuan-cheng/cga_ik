@@ -124,6 +124,9 @@ public:
     Quaternionf quat_rot_cen_epl_c() const { return quat_rot_cen_epl_c_; }
     Quaternionf quat_rot_cen_ept() const { return quat_rot_cen_ept_; }
     Quaternionf quat_rot_cen_ee() const { return quat_rot_cen_ee_; }
+    Quaternionf quat_rot_cen_epl_c_remapped() const { return quat_rot_cen_epl_c_remapped_; }
+    Quaternionf quat_rot_cen_ept_remapped() const { return quat_rot_cen_ept_remapped_; }
+    Quaternionf quat_rot_cen_ee_remapped() const { return quat_rot_cen_ee_remapped_; }
 
     // Elbow poses
     Vector3f pos_rot_cen_elb_0() const { return cga_utils::G2R(pos_rot_cen_elb_0_); }
@@ -216,6 +219,7 @@ private:
 
     Quaternionf quat_rot_cen_epl_0_, quat_rot_cen_epl_1_, quat_rot_cen_epl_2_; // End-plate corner quaternions
     Quaternionf quat_rot_cen_epl_c_, quat_rot_cen_ept_, quat_rot_cen_ee_;
+    Quaternionf quat_rot_cen_epl_c_remapped_, quat_rot_cen_ept_remapped_, quat_rot_cen_ee_remapped_;
 
     Quaternionf quat_rot_cen_elb_0_, quat_rot_cen_elb_1_, quat_rot_cen_elb_2_; // Elbow quaternions
 
@@ -556,9 +560,9 @@ inline void CGAIKSPM3DoF::solveVariantGeometry()
     quat_rot_cen_epl_c_ = target_quat_rot_cen_epl_;
     quat_rot_cen_ept_   = target_quat_rot_cen_epl_;
     quat_rot_cen_ee_    = target_quat_rot_cen_epl_;
-    // quat_rot_cen_epl_c_ = quat_ubase_epl_c_reset_.inverse() * target_quat_rot_cen_epl_;
-    // quat_rot_cen_ept_   = quat_ubase_epl_c_reset_.inverse() * target_quat_rot_cen_epl_;
-    // quat_rot_cen_ee_    = quat_ubase_epl_c_reset_.inverse() * target_quat_rot_cen_epl_;
+    quat_rot_cen_epl_c_remapped_ = target_quat_rot_cen_epl_ * quat_ubase_epl_c_reset_.inverse();
+    quat_rot_cen_ept_remapped_   = target_quat_rot_cen_epl_ * quat_ubase_epl_c_reset_.inverse();
+    quat_rot_cen_ee_remapped_    = target_quat_rot_cen_epl_ * quat_ubase_epl_c_reset_.inverse();
 
     // Elbow orientation
     quat_rot_cen_elb_0_ = computeElbowQuat(pos_rot_cen_epl_0_, pos_rot_cen_elb_0_);

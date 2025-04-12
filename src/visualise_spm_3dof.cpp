@@ -114,6 +114,7 @@ private:
 
     // IK solver object and result
     std::shared_ptr<CGAIKSPM3DoF> ik_solver_;
+    Vector9f ik_joint_angles_;
     SPM3DoFIKResetOrigin ik_reset_origin_result_;
     SPM3DoFIKResult ik_result_;
 
@@ -192,6 +193,19 @@ private:
         // Solve initial pose
         ik_reset_origin_result_ = ik_solver_->resetEEOrigin();
         ik_result_ = ik_solver_->solveIK(quat_cmd_);
+
+        // IK joint angles [rad]
+        ik_joint_angles_ << ik_result_.th_0, /* Actual motor angles */ 
+                            ik_result_.th_1, 
+                            ik_result_.th_2,
+                            ik_reset_origin_result_.th_0_nom, /* Nominal motor angles */ 
+                            ik_reset_origin_result_.th_1_nom, 
+                            ik_reset_origin_result_.th_2_nom,
+                            ik_result_.th_0 - ik_reset_origin_result_.th_0_nom, /* Deviated motor angles */
+                            ik_result_.th_1 - ik_reset_origin_result_.th_1_nom,
+                            ik_result_.th_2 - ik_reset_origin_result_.th_2_nom;
+
+
 
         // Print robot geometric parameters
         std::cout << "--------------------------------------------------------------" << std::endl;
@@ -466,50 +480,53 @@ private:
 
         // Target orientation for the IK problem
         double freq = 0.1;
-        double th = 30.0f * std::sin(2.0 * M_PI * freq * t_);
+        double th = (30.0 * RM::d2r) * std::sin(2.0 * M_PI * freq * t_);
         // double th = 0.0;
 
-        // axis_ang_cmd_ = Vector4d(0.0, 0.0, 1.0, th);
-        axis_ang_cmd_ = Vector4d(0.0, 1.0, 0.0, th);
-        // axis_ang_cmd_ = Vector4d(1.0, 0.0, 0.0, th);
+        // Vector3d axis = Vector3d(0.0, 0.0, 1.0);
+        Vector3d axis = Vector3d(0.0, 1.0, 0.0);
+        // Vector3d axis = Vector3d(1.0, 0.0, 0.0);
 
-        // Vector3d u_hat = Vector3d(1.0, 0.0, 0.0);
-        // Quaterniond quat_ubase_epl_c_reset = RM::Quatz(th_z_ee_reset_ * RM::d2r);
-        // Vector3d u_hat_remapped = RM::InvQuat(quat_ubase_epl_c_reset) * u_hat;
-        // axis_ang_cmd_ = Vector4d(u_hat_remapped(0), u_hat_remapped(1), u_hat_remapped(2), th);
-        
-
-        Vector3d so3 = (axis_ang_cmd_.head(3)).normalized() * axis_ang_cmd_(3) * RM::d2r;
-        quat_cmd_ = RM::so32Quat(so3).cast<float>();
+        quat_cmd_ = RM::so32Quat( axis.normalized() * th ).cast<float>();
     }
 
     void solveSPMIK() 
     {
         ik_result_ = ik_solver_->solveIK(quat_cmd_);
+
+        // IK joint angles [rad]
+        ik_joint_angles_ << ik_result_.th_0, /* Actual motor angles */ 
+                            ik_result_.th_1, 
+                            ik_result_.th_2,
+                            ik_reset_origin_result_.th_0_nom, /* Nominal motor angles */ 
+                            ik_reset_origin_result_.th_1_nom, 
+                            ik_reset_origin_result_.th_2_nom,
+                            ik_result_.th_0 - ik_reset_origin_result_.th_0_nom, /* Deviated motor angles */
+                            ik_result_.th_1 - ik_reset_origin_result_.th_1_nom,
+                            ik_result_.th_2 - ik_reset_origin_result_.th_2_nom;
+
     }
 
     void publishIKSolution()
     {
         // Publish the joint states for these angles
+        std_msgs::msg::Float64MultiArray angles_msg;
         sensor_msgs::msg::JointState js_msg;
         // js_msg.header.stamp = this->now();
         js_msg.header.stamp = current_time_;
 
-        // Motor angles [rad]
-        // // Actual angles and angle deviations from nominal
-        js_msg.name = {"joint_0", "joint_1", "joint_2", "d_joint_0", "d_joint_1", "d_joint_2"};
-        js_msg.position = {ik_result_.th_0, ik_result_.th_1, ik_result_.th_2, ik_result_.th_0 - ik_reset_origin_result_.th_0_nom, ik_result_.th_1 - ik_reset_origin_result_.th_1_nom, ik_result_.th_2 - ik_reset_origin_result_.th_2_nom};
-        joint_pub_->publish(js_msg);
+        for (int i = 0; i < ik_joint_angles_.size(); ++i) {
+            angles_msg.data.push_back(ik_joint_angles_(i) * RM::r2d);
+            js_msg.position.push_back(ik_joint_angles_(i));
+        }
+        js_msg.name = {"joint_0", "joint_1", "joint_2", 
+                       "joint_0_nom", "joint_1_nom", "joint_2_nom",
+                       "d_joint_0", "d_joint_1", "d_joint_2"
+                      };
 
-        // Optionally publish them as an array
-        std_msgs::msg::Float64MultiArray angles_msg;
-        angles_msg.data = {ik_result_.th_0 * RM::r2d, 
-                           ik_result_.th_1 * RM::r2d, 
-                           ik_result_.th_2 * RM::r2d,
-                           (ik_result_.th_0 - ik_reset_origin_result_.th_0_nom) * RM::r2d,
-                           (ik_result_.th_1 - ik_reset_origin_result_.th_1_nom) * RM::r2d,
-                           (ik_result_.th_2 - ik_reset_origin_result_.th_2_nom) * RM::r2d};
         angles_pub_->publish(angles_msg);
+        joint_pub_->publish(js_msg);
+        
     }
 
     void publishAllTransforms()
@@ -533,13 +550,13 @@ private:
         publishTF(ik_solver_->pos_rot_cen_epl_0(), ik_solver_->quat_rot_cen_epl_0(), "spm_epl_0", "spm_rot_cen");
         publishTF(ik_solver_->pos_rot_cen_epl_1(), ik_solver_->quat_rot_cen_epl_1(), "spm_epl_1", "spm_rot_cen");
         publishTF(ik_solver_->pos_rot_cen_epl_2(), ik_solver_->quat_rot_cen_epl_2(), "spm_epl_2", "spm_rot_cen");
+        
+        
+        // End-plate centre, sphere end-point, and end-effector
         publishTF(ik_solver_->pos_rot_cen_epl_c(), ik_solver_->quat_rot_cen_epl_c(), "spm_epl_c", "spm_rot_cen");
-
-        // End-point on the end-plate sphere
-        publishTF(ik_solver_->pos_rot_cen_ept(), ik_solver_->quat_rot_cen_ept(), "spm_ept", "spm_rot_cen");
-
-        // End-effector
-        publishTF(ik_solver_->pos_rot_cen_ee(), ik_solver_->quat_rot_cen_ee(), "spm_ee", "spm_rot_cen");
+        publishTF(ik_solver_->pos_rot_cen_epl_c(), ik_solver_->quat_rot_cen_epl_c_remapped(), "spm_epl_c_remapped", "spm_rot_cen"); // Remapped end-plate centre
+        publishTF(ik_solver_->pos_rot_cen_ept(), ik_solver_->quat_rot_cen_ept_remapped(), "spm_ept", "spm_rot_cen");
+        publishTF(ik_solver_->pos_rot_cen_ee(), ik_solver_->quat_rot_cen_ee_remapped(), "spm_ee", "spm_rot_cen");
 
         // Elbows
         publishTF(ik_solver_->pos_rot_cen_elb_0(), ik_solver_->quat_rot_cen_elb_0(), "spm_elbow_0", "spm_rot_cen");
