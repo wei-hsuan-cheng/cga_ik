@@ -43,26 +43,22 @@ include_directories(
 set(CGA_TEST_TEST_SOURCES src/cga_test.cpp)
 set(VISUALISE_COBOT_6DOF_SOURCES src/visualise_cobot_6dof.cpp)
 set(VISUALISE_SPM_3DOF_SOURCES src/visualise_spm_3dof.cpp)
-set(VISUALISE_SPM_3DOF_NON_OO_SOURCES src/visualise_spm_3dof_non_oo.cpp)
 
 # Add executables
 add_executable(cga_test ${CGA_TEST_TEST_SOURCES})
 add_executable(visualise_cobot_6dof ${VISUALISE_COBOT_6DOF_SOURCES})
 add_executable(visualise_spm_3dof ${VISUALISE_SPM_3DOF_SOURCES})
-add_executable(visualise_spm_3dof_non_oo ${VISUALISE_SPM_3DOF_NON_OO_SOURCES})
 
 # Link libraries
 ament_target_dependencies(cga_test ${dependencies})
 ament_target_dependencies(visualise_cobot_6dof ${dependencies})
 ament_target_dependencies(visualise_spm_3dof ${dependencies})
-ament_target_dependencies(visualise_spm_3dof_non_oo ${dependencies})
 
 # Install targets
 install(TARGETS
   cga_test
   visualise_cobot_6dof
   visualise_spm_3dof
-  visualise_spm_3dof_non_oo
   
   DESTINATION lib/${PROJECT_NAME}
 )

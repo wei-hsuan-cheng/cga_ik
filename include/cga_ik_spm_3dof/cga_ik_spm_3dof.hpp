@@ -46,7 +46,7 @@ class CGAIKSPM3DoF
 {
 public:
     /**
-     * @brief Constructor that sets up the “invariant” geometry parameters and precomputes the “fixed” spheres/planes, storing them as members.
+     * @brief Constructor that sets up the “invariant” geometric parameters and precomputes the “fixed” spheres/planes, storing them as members.
      * @param r_c           rotation-centre offset
      * @param ang_b_m       angle between base-plane pivot and motor pivot [deg]
      * @param r_b           base radius
@@ -61,7 +61,7 @@ public:
      * @param e_principal   principal axis (e.g. e3)
      * @param s_0           first basis vector on the base plane (e.g. e1)
      * @param s_1           second basis vector on the base plane (120 deg from s_0)
-     * @param th_z_ee_reset  initial z-rotation for re-origining the coordinate system (mechanical origin -> geometric origin)
+     * @param th_z_ee_reset  initial z-rotation for re-origining the coordinate system (mechanical origin -> control origin)
      */
     CGAIKSPM3DoF(
         float r_c,
@@ -83,7 +83,7 @@ public:
 
     /**
      * @brief Compute the IK for a given target orientation of the end-plate.
-     * @param quat_epl_c_reset_cmd The orientation of the end-plate w.r.t. the up-shifted base frame
+     * @param quat_ubase_epl_c_cmd The orientation of the end-plate w.r.t. the up-shifted base frame
      * @return SPM3DoFIKResult The IK solution containing keypoints positions, orientations, and motor angles for the 3-DoF SPM.
      */
     float r_s_piv() const { return r_s_piv_; }
@@ -137,13 +137,13 @@ public:
     Quaternionf quat_rot_cen_elb_2() const { return quat_rot_cen_elb_2_; }
 
     // Main functions
-    void solveInvariantGeometry();
-    Quaternionf remapEndPlateCentreQuat(const Quaternionf &quat_epl_c_reset_cmd);
-    void getTargetRotor(const Quaternionf &quat_epl_c_reset_cmd);
-    void solveVariantGeometry();
+    void solveInvariantPoses();
+    Quaternionf remapEndPlateCentreQuat(const Quaternionf &quat_ubase_epl_c_cmd);
+    void getTargetRotor(const Quaternionf &quat_ubase_epl_c_cmd);
+    void solveVariantPoses();
     void solveAngles();
-    SPM3DoFIKResetOrigin resetEEOrigin();
-    SPM3DoFIKResult solveIK(const Quaternionf &quat_epl_c_reset_cmd);
+    SPM3DoFIKResetOrigin resetOrigin(const std::string &spm_mode);
+    SPM3DoFIKResult solveIK(const Quaternionf &quat_ubase_epl_c_cmd);
 
 private:
     float r_c_;
@@ -184,8 +184,7 @@ private:
     Quaternionf target_quat_rot_cen_epl_;
     CGA R_rot_cen_ee_; 
 
-    // Precomputed directions for the motor pivot lines (“fixed planes” geometry)
-    CGA s_2_dir_;             ///< This is just s_2 but normalized if needed
+    // Precomputed directions for the motor pivot lines (“fixed planes")
     CGA dir_rot_cen_m_0_;
     CGA dir_rot_cen_m_1_;
     CGA dir_rot_cen_m_2_;
@@ -285,11 +284,11 @@ inline CGAIKSPM3DoF::CGAIKSPM3DoF(
     // Reset end-effector origin
     quat_ubase_epl_c_reset_ = Quaternionf::Identity(); // Do not reset in the beginning
     // Solve for the invariant poses of the robot
-    solveInvariantGeometry();
+    solveInvariantPoses();
     // IK target orientaion of the end-effector w.r.t. the rotation centre
     getTargetRotor(quat_ubase_epl_c_reset_);
     // Solve for the variant poses of the robot
-    solveVariantGeometry();
+    solveVariantPoses();
     // Solve for the motor angles [rad]
     solveAngles();
 }
@@ -432,7 +431,7 @@ inline float CGAIKSPM3DoF::computeRelativeZAngle(const Quaternionf &quat_0_1,
 
 
 // Main functions
-inline void CGAIKSPM3DoF::solveInvariantGeometry()
+inline void CGAIKSPM3DoF::solveInvariantPoses()
 {
     // Compute s_2
     s_2_ = (-1.0f) * s_0_ + (-1.0f) * s_1_;
@@ -488,25 +487,22 @@ inline void CGAIKSPM3DoF::solveInvariantGeometry()
     quat_rot_cen_m_2_i_ = computeMotorInitalQuat(pos_ubase_rot_cen_, pos_rot_cen_m_2_);
 }
 
-inline Quaternionf CGAIKSPM3DoF::remapEndPlateCentreQuat(const Quaternionf &quat_epl_c_reset_cmd)
+inline Quaternionf CGAIKSPM3DoF::remapEndPlateCentreQuat(const Quaternionf &quat_ubase_epl_c_cmd)
 {
-    Vector3d so3_epl_c_reset_cmd = RM::Quat2so3(quat_epl_c_reset_cmd.cast<double>());
-    Vector4d axis_ang_epl_c_reset_cmd = RM::AxisAng3(so3_epl_c_reset_cmd);
-    Quaterniond quat_ubase_epl_c_reset = RM::Quatz(th_z_ee_reset_ * RM::d2r);
-    axis_ang_epl_c_reset_cmd.head<3>() = RM::InvQuat(quat_ubase_epl_c_reset) * axis_ang_epl_c_reset_cmd.head<3>();
-
-    return RM::so32Quat( axis_ang_epl_c_reset_cmd.head<3>() * axis_ang_epl_c_reset_cmd(3) ).cast<float>();
+    Vector3d so3_epl_c_reset_cmd = RM::Quat2so3( quat_ubase_epl_c_cmd.cast<double>() );
+    Vector3d so3_epl_c_reset_cmd_remapped = RM::InvQuat( quat_ubase_epl_c_reset_.cast<double>() ) * so3_epl_c_reset_cmd;
+    return RM::so32Quat(so3_epl_c_reset_cmd_remapped).cast<float>(); // remapped_quat_ubase_epl_c_cmd
 }
 
-inline void CGAIKSPM3DoF::getTargetRotor(const Quaternionf &quat_epl_c_reset_cmd)
+inline void CGAIKSPM3DoF::getTargetRotor(const Quaternionf &quat_ubase_epl_c_cmd)
 {
     // IK target rotor orientaion of the end-effector w.r.t. the rotation centre
-    target_quat_rot_cen_epl_ = quat_ubase_rot_cen_.inverse() * quat_epl_c_reset_cmd;
+    target_quat_rot_cen_epl_ = quat_ubase_rot_cen_.inverse() * quat_ubase_epl_c_cmd;
     Vector3f zyx_euler = RM::Quat2zyxEuler( target_quat_rot_cen_epl_.cast<double>() ).cast<float>();
     R_rot_cen_ee_ = zyxEuler2Rotor(zyx_euler);
 }
 
-inline void CGAIKSPM3DoF::solveVariantGeometry()
+inline void CGAIKSPM3DoF::solveVariantPoses()
 {
     // Positions of the end-plate corners that lie on S_epl_ (the end-plate sphere).
     // i.e. we do offset = r_e_ * s_i + d_ * e_principal_, then scale to r_s_epl_ in final, 
@@ -578,14 +574,16 @@ inline void CGAIKSPM3DoF::solveAngles()
     th_2_ = computeRelativeZAngle(quat_rot_cen_m_2_i_, quat_rot_cen_m_2_);
 }
 
-inline SPM3DoFIKResetOrigin CGAIKSPM3DoF::resetEEOrigin()
+inline SPM3DoFIKResetOrigin CGAIKSPM3DoF::resetOrigin(const std::string &spm_mode)
 {
+    // Select SPM mode: "CONTROL" or "HOME"
+    float th_reset = (spm_mode == "CONTROL") ? th_z_ee_reset_ : 0.0f;
     // Nominal quaternion orientation
-    quat_ubase_epl_c_reset_ = RM::Quatz(th_z_ee_reset_ * RM::d2r).cast<float>();
+    quat_ubase_epl_c_reset_ = RM::Quatz(th_reset * RM::d2r).cast<float>();
     // IK target orientaion of the end-effector w.r.t. the rotation centre
     getTargetRotor(quat_ubase_epl_c_reset_);
     // Solve for the variant poses of the robot
-    solveVariantGeometry();
+    solveVariantPoses();
     // Solve for the motor angles [rad]
     solveAngles();
 
@@ -597,13 +595,12 @@ inline SPM3DoFIKResetOrigin CGAIKSPM3DoF::resetEEOrigin()
     return result;
 }
 
-inline SPM3DoFIKResult CGAIKSPM3DoF::solveIK(const Quaternionf &quat_epl_c_reset_cmd)
+inline SPM3DoFIKResult CGAIKSPM3DoF::solveIK(const Quaternionf &quat_ubase_epl_c_cmd)
 {
     // IK target orientaion of the end-effector w.r.t. the rotation centre
-    getTargetRotor(quat_ubase_epl_c_reset_ * remapEndPlateCentreQuat(quat_epl_c_reset_cmd));
-    // getTargetRotor(quat_epl_c_reset_cmd);
+    getTargetRotor(quat_ubase_epl_c_reset_ * remapEndPlateCentreQuat(quat_ubase_epl_c_cmd));
     // Solve for the variant poses of the robot
-    solveVariantGeometry();
+    solveVariantPoses();
     // Solve for the motor angles [rad]
     solveAngles();
 

@@ -1,27 +1,19 @@
-geometric_params:
-  # Units: [m, deg]
-  
+geometric_params: # Units: [m, deg]
   # Lower parts
   r_c: 0.145
   ang_b_m: 54.735610
   r_b: 0.20506096413551428
-
   # Upper parts
-  # d: 0.035
-  # r_e: 0.076360985
-
-  d: 0.04824849
-  r_e: 0.06876105883943252
-
+  d: 0.04824849 # 0.035
+  r_e: 0.06876105883943252 # 0.076360985
   # Sphere radii
   r_s_piv: 0.2511473651308862
   r_s_m: 0.116
   r_s_elb: 0.086
   r_s_epl: 0.084
-
   # Elbow configuration
   krl: -1 # +1 for right elbow; -1 for left elbow
-
-  # Initial z-rotation for re-origining the coordinate system (mechanical origin -> geometric origin)
+  # Re-origining the coordinate system (mechanical origin -> control origin); set initial z-rotation
   th_z_ee_reset: -60.0
-  # th_z_ee_reset: 0.0
+  # SPM mode
+  spm_mode: "CONTROL" # "CONTROL" or "HOME"

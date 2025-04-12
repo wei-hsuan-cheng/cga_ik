@@ -44,7 +44,7 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://cga_ik/meshes/spm_3dof/spm_base_plate.stl" 
+                <mesh filename="package://cga_ik/meshes/spm_3dof/spm_base_plate_with_blocks_and_motors.stl" 
                       scale="${mm2m} ${mm2m} ${mm2m}"/>
             </geometry>
             <material name="white" />
@@ -75,7 +75,7 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 ${pi}"/>
             <geometry>
-                <mesh filename="package://cga_ik/meshes/spm_3dof/spm_motor_link.stl" 
+                <mesh filename="package://cga_ik/meshes/spm_3dof/spm_motor_link_with_pulley.stl" 
                     scale="${mm2m} ${mm2m} ${mm2m}"/>
             </geometry>
             <material name="white" />
@@ -95,7 +95,7 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 ${pi}"/>
             <geometry>
-                <mesh filename="package://cga_ik/meshes/spm_3dof/spm_motor_link.stl" 
+                <mesh filename="package://cga_ik/meshes/spm_3dof/spm_motor_link_with_pulley.stl" 
                     scale="${mm2m} ${mm2m} ${mm2m}"/>
             </geometry>
             <material name="white" />
@@ -115,7 +115,7 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 ${pi}"/>
             <geometry>
-                <mesh filename="package://cga_ik/meshes/spm_3dof/spm_motor_link.stl" 
+                <mesh filename="package://cga_ik/meshes/spm_3dof/spm_motor_link_with_pulley.stl" 
                     scale="${mm2m} ${mm2m} ${mm2m}"/>
             </geometry>
             <material name="white" />

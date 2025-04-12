@@ -19,20 +19,24 @@ def generate_launch_description():
     )
     geometric_params = load_yaml_file_absolute_path(spm_3dof_params).get("geometric_params", {})
 
-    r_c_str = str(geometric_params.get("r_c"))
-    ang_b_m_str = str(geometric_params.get("ang_b_m"))
-    r_b_str = str(geometric_params.get("r_b"))
-    d_str = str(geometric_params.get("d"))
-    r_e_str = str(geometric_params.get("r_e"))
-    
-    r_s_piv_str = str(geometric_params.get("r_s_piv"))
-    r_s_m_str = str(geometric_params.get("r_s_m"))
-    r_s_elb_str = str(geometric_params.get("r_s_elb"))
-    r_s_epl_str = str(geometric_params.get("r_s_epl"))
-    
+    # Lower parts
+    r_c = str(geometric_params.get("r_c"))
+    ang_b_m = str(geometric_params.get("ang_b_m"))
+    r_b = str(geometric_params.get("r_b"))
+    # Upper parts
+    d = str(geometric_params.get("d"))
+    r_e = str(geometric_params.get("r_e"))
+    # Sphere radii
+    r_s_piv = str(geometric_params.get("r_s_piv"))
+    r_s_m = str(geometric_params.get("r_s_m"))
+    r_s_elb = str(geometric_params.get("r_s_elb"))
+    r_s_epl = str(geometric_params.get("r_s_epl"))
+    # Elbow configuration
     krl = str(geometric_params.get("krl"))
-    
+    # Re-origining the coordinate system (mechanical origin -> control origin); set initial z-rotation
     th_z_ee_reset = str(geometric_params.get("th_z_ee_reset"))
+    # SPM mode
+    spm_mode = str(geometric_params.get("spm_mode"))
 
     urdf_xacro_path = os.path.join(
         get_package_share_directory("cga_ik"),
@@ -51,21 +55,24 @@ def generate_launch_description():
             " ",
             urdf_xacro_path,
             " ",
-            
-            "r_c:=", r_c_str, " ",
-            "ang_b_m:=", ang_b_m_str, " ",
-            "r_b:=", r_b_str, " ",
-            "d:=", d_str, " ",
-            "r_e:=", r_e_str, " ",
-            
-            "r_s_piv:=", r_s_piv_str, " ",
-            "r_s_m:=", r_s_m_str, " ",
-            "r_s_elb:=", r_s_elb_str, " ",
-            "r_s_epl:=", r_s_epl_str, " ",
-            
+            # Lower parts
+            "r_c:=", r_c, " ",
+            "ang_b_m:=", ang_b_m, " ",
+            "r_b:=", r_b, " ",
+            # Upper parts
+            "d:=", d, " ",
+            "r_e:=", r_e, " ",
+            # Sphere radii
+            "r_s_piv:=", r_s_piv, " ",
+            "r_s_m:=", r_s_m, " ",
+            "r_s_elb:=", r_s_elb, " ",
+            "r_s_epl:=", r_s_epl, " ",
+            # Elbow configuration
             "krl:=", krl, " ",
-            
+            # Re-origining the coordinate system (mechanical origin -> control origin); set initial z-rotation
             "th_z_ee_reset:=", th_z_ee_reset, " ",
+            # SPM mode
+            "spm_mode:=", spm_mode, " ",
         ]
     )
     
@@ -91,19 +98,10 @@ def generate_launch_description():
         output="screen",
         parameters=[geometric_params],
     )
-    
-    visualise_spm_3dof_non_oo_node = Node(
-        package="cga_ik",
-        executable="visualise_spm_3dof_non_oo",
-        name="visualise_spm_3dof_non_oo",
-        output="screen",
-        parameters=[geometric_params],
-    )
 
     nodes_to_start = [
                       robot_state_publisher_node,
                       visualise_spm_3dof_node,
-                    #   visualise_spm_3dof_non_oo_node,       
                       ]
 
     return LaunchDescription(nodes_to_start)
