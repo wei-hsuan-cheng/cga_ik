@@ -24,7 +24,7 @@
 // Math utils
 #include "cga/cga_utils.hpp"
 #include "cga_ik_spm_3dof/cga_ik_spm_3dof.hpp"
-#include "robot_math_utils/robot_math_utils_v1_10.hpp"
+#include "robot_math_utils/robot_math_utils_v1_11.hpp"
 
 
 using SPM = cga_ik_action_interfaces::action::SPM;
@@ -46,12 +46,15 @@ public:
   SPMActionServer()
   : Node(node_name)
   {
+    // Load ROS 2 parameters from yaml file
+    loadYAMLParams();
+
     // Initialisation
     initTimeSpec();
     resetTime();
     initFSM();
     initMotionParams();
-    loadYAMLParams();
+    initControlParams();
     initSPMIK();
     initRobotControl();
     initRobotVisual();
@@ -162,6 +165,18 @@ private:
   // IK motor joints command
   Vector3f joint_angles_cmd_;
 
+  // S-curve
+  struct SCurveParams
+  {
+    SCurveParams(double T_in = 1.0)
+    : T(T_in),
+      lambda((4.0 / T_in) * 5.0)
+    {}
+    double T;      
+    double lambda; 
+  };
+  SCurveParams scur_;
+
   // FSM
   bool stop_action_;
   std::mutex data_mutex_;
@@ -208,6 +223,12 @@ private:
     // axis_cmd_ = Vector3d(0.0, 0.0, 1.0);
     axis_cmd_ = Vector3d(0.0, 1.0, 0.0);
     // axis_cmd_ = Vector3d(1.0, 0.0, 0.0);
+  }
+
+  void initControlParams()
+  {
+    // S-curve params
+    scur_ = SCurveParams{5.0};
   }
 
   void loadYAMLParams()
@@ -568,7 +589,7 @@ private:
       k_ += 1;
 
       // Target orientation for the IK problem
-      double th = (th_z_ee_reset_ * RM::d2r) * (1.0 - exp(- t_ / 1.0));
+      double th = RM::SCurve(th_z_ee_reset_ * RM::d2r, 0.0, scur_.lambda, t_, scur_.T);
       quat_ubase_epl_c_cmd_ = RM::so32Quat( Vector3d(0.0, 0.0, 1.0) * th ).cast<float>();
   }
 
@@ -839,6 +860,7 @@ private:
     resetTime();
     initFSM();
     initMotionParams();
+    initControlParams();
     initSPMIK();
     initRobotControl();
     initRobotVisual();
