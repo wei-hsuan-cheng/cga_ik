@@ -34,7 +34,7 @@ Potential issues:
 #include <iostream>
 #include <tuple>
 #include "cga/cga_utils.hpp"
-#include "robot_math_utils/robot_math_utils_v1_9.hpp"  // This header defines DHParams and DHTable
+#include "robot_math_utils/robot_math_utils_v1_11.hpp"  // This header defines DHParams and DHTable
 
 using cga_utils::up;
 using cga_utils::down;

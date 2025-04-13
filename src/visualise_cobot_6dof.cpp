@@ -10,7 +10,7 @@
 #include <chrono>
 #include <memory>
 
-#include "robot_math_utils/robot_math_utils_v1_10.hpp"
+#include "robot_math_utils/robot_math_utils_v1_11.hpp"
 #include "cga_ik_cobot_6dof/cga_ik_cobot_6dof.hpp"
 
 using namespace std::chrono_literals;
