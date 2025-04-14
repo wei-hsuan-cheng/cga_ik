@@ -89,7 +89,7 @@ Then, you will see the robots visualised in RViz2.
   - [3] [Slides at GAME2020: Robots, Ganja and Screw Theory](https://slides.com/hugohadfield/game2020)
   - [4] [JavaScript visualisation of 3-DoF agile eye](https://enkimute.github.io/ganja.js/examples/coffeeshop.html#2DmBscfSXO)
 - SPM CAD design:
-  - [1] https://youtu.be/0sKqc5IwQQQ?si=t4XDC7YJjNFsKU7a
+  - [1] [Skyentific's SPM project](https://youtu.be/0sKqc5IwQQQ?si=t4XDC7YJjNFsKU7a)
   
 
 ## Acknowledgements
