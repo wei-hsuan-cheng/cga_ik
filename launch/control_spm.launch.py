@@ -23,6 +23,7 @@ def launch_setup(context, *args, **kwargs):
         "spm_3dof_params.yaml"
     )
     geometric_params = load_yaml_file_absolute_path(spm_3dof_params).get("geometric_params", {})
+    motion_params = load_yaml_file_absolute_path(spm_3dof_params).get("motion_params", {})
 
     # For robot state publisher
     urdf_xacro_path = os.path.join(
@@ -111,7 +112,9 @@ def launch_setup(context, *args, **kwargs):
         executable="spm_action_server",
         name="spm_action_server",
         output="screen",
-        parameters=[geometric_params],
+        parameters=[geometric_params,
+                    motion_params,
+                    ],
         condition=IfCondition(use_fake_hardware)
     )
     

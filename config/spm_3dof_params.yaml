@@ -17,3 +17,11 @@ geometric_params: # Units: [m, deg]
   th_z_ee_reset: -60.0
   # SPM mode
   spm_mode: "CONTROL" # "CONTROL" or "HOME"
+
+motion_params: # Units: [m, deg]
+  # C-axis (z-rotation) and A-axis (x-rotation) of milling machines
+  # ang_c: 45.0
+  # ang_a: 60.0
+
+  ang_c: -45.0
+  ang_a: 60.0

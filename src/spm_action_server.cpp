@@ -153,6 +153,12 @@ private:
   double th_cmd_; // [rad]
   Vector3d axis_cmd_;
 
+  // C-axis (z-rotation) and A-axis (x-rotation) of milling machines
+  Vector3d axis_c_;
+  double ang_c_;
+  Vector3d axis_a_;
+  double ang_a_;
+
   // IK solver object and result
   std::shared_ptr<CGAIKSPM3DoF> ik_solver_;
   Vector9f ik_joint_angles_;
@@ -220,17 +226,23 @@ private:
 
   void initMotionParams()
   {
+    // freq_cmd_ = 0.1;
+    // th_cmd_mag_ = 60.0 * RM::d2r; // [rad]
+    // th_cmd_ = 0.0;
+
+    // double ang = 45.0 * RM::d2r; // [rad]
+    // axis_cmd_ = Vector3d(std::cos(ang), std::sin(ang), -1.0);
+
+    // C-axis (z-rotation) and A-axis (x-rotation) of milling machines    
+    // C-axis
+    this->get_parameter("ang_c", ang_c_); // [deg]
+    axis_c_ = Vector3d(std::cos(ang_c_ * RM::d2r + M_PI / 2.0), std::sin(ang_c_ * RM::d2r + M_PI / 2.0), 0.0);
+    // A-axis
+    this->get_parameter("ang_a", ang_a_); // [deg]
     freq_cmd_ = 0.1;
-    th_cmd_mag_ = 60.0 * RM::d2r; // [rad]
-    th_cmd_ = 0.0;
 
-    // axis_cmd_ = Vector3d(0.0, 0.0, 1.0);
-    double ang = 45.0 * RM::d2r; // [rad]
-    axis_cmd_ = Vector3d(std::cos(ang), 
-                         std::sin(ang), 
-                         -1.0);
+    quat_ubase_epl_c_end_ = RM::so32Quat( axis_c_.normalized() * ang_a_ * RM::d2r ).cast<float>();
 
-    quat_ubase_epl_c_end_ = Quaternionf::Identity();
     quat_err_thresh_ = 0.01 * RM::d2r; // [rad]
   }
 
@@ -242,6 +254,7 @@ private:
 
   void loadYAMLParams()
   {
+    // Geometric params
     // Lower parts
     this->declare_parameter<float>("r_c", 1.0);
     this->declare_parameter<float>("ang_b_m", 0.0);
@@ -260,6 +273,11 @@ private:
     this->declare_parameter<double>("th_z_ee_reset", 0.0);
     // SPM mode
     this->declare_parameter<std::string>("spm_mode", "HOME");
+
+
+    // Motion params
+    this->declare_parameter<float>("ang_c", 0.0);
+    this->declare_parameter<float>("ang_a", 0.0);
   }
 
   void initSPMIK()
@@ -573,7 +591,7 @@ private:
       traj_marker.action = visualization_msgs::msg::Marker::ADD;
 
       // thickness in meters
-      traj_marker.scale.x = 0.003; // e.g. 3mm wide
+      traj_marker.scale.x = 0.003; // e.g. 3 [mm] wide
 
       // color
       traj_marker.color.r = rgba_color(0);
@@ -655,10 +673,15 @@ private:
       t_ = k_ * Ts_;
       k_ += 1;
 
-      // Target orientation for the IK problem
-      // th_cmd_ = (th_cmd_mag_) * std::sin(2.0 * M_PI * freq_cmd_ * t_); // [rad]
-      th_cmd_ = RM::SCurve(th_cmd_mag_, 0.0, scur_.lambda, t_, scur_.T); // [rad]
-      quat_ubase_epl_c_cmd_ = RM::so32Quat( axis_cmd_.normalized() * th_cmd_ ).cast<float>();
+      // // Target orientation for the IK problem
+      // // th_cmd_ = (th_cmd_mag_) * std::sin(2.0 * M_PI * freq_cmd_ * t_); // [rad]
+      // th_cmd_ = RM::SCurve(th_cmd_mag_, 0.0, scur_.lambda, t_, scur_.T); // [rad]
+      // quat_ubase_epl_c_cmd_ = RM::so32Quat( axis_cmd_.normalized() * th_cmd_ ).cast<float>();
+
+      // C-axis (z-rotation) and A-axis (x-rotation) of milling machines
+      th_cmd_ = RM::SCurve(ang_a_ * RM::d2r, 0.0, scur_.lambda, t_, scur_.T); // [rad]
+      quat_ubase_epl_c_cmd_ = RM::so32Quat( axis_c_.normalized() * th_cmd_ ).cast<float>();
+
   }
 
   void solveSPMIK() 
@@ -884,7 +907,6 @@ private:
     // Check if the re-origining is achieved
     Quaternionf relative_quat = quat_ubase_epl_c_cmd_.inverse() * RM::Quatz(th_z_ee_reset_ * RM::d2r).cast<float>();
     Vector3d relative_so3 = RM::Quat2so3(relative_quat.cast<double>());
-
     return ( relative_so3.norm() < quat_err_thresh_ ) ? true : false;
   }
 
@@ -893,13 +915,15 @@ private:
     // Check if the homing is achieved
     Quaternionf relative_quat = quat_ubase_epl_c_cmd_.inverse() * RM::Quatz(-th_z_ee_reset_ * RM::d2r).cast<float>();
     Vector3d relative_so3 = RM::Quat2so3(relative_quat.cast<double>());
-
     return ( relative_so3.norm() < quat_err_thresh_ ) ? true : false;
   }
 
   bool checkFinishTask()
   {
-      return ( fabs( RM::ErrorPercentage(th_cmd_ , th_cmd_mag_) ) < 0.01 /* 1 [%]*/ ) ? true : false;
+      // Check if quat_ubase_epl_c_cmd_ achieved quat_ubase_epl_c_end_
+      Quaternionf relative_quat = quat_ubase_epl_c_cmd_.inverse() * quat_ubase_epl_c_end_;
+      Vector3d relative_so3 = RM::Quat2so3(relative_quat.cast<double>());
+      return ( relative_so3.norm() < quat_err_thresh_ ) ? true : false;
   }
 
   // -------------
@@ -1109,7 +1133,7 @@ private:
           if (task_finished_) {
             // Reset time
             resetTime();
-            // Save end pose
+            // Save end pose after finishing the task
             quat_ubase_epl_c_end_ = quat_ubase_epl_c_cmd_;
             // Switch FSM state
             fsm_state_ = SPMFSMState::HOMING;
