@@ -3,7 +3,9 @@ import xacro
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.substitutions import Command, FindExecutable, PathJoinSubstitution
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, RegisterEventHandler, OpaqueFunction
+from launch.substitutions import Command, FindExecutable, LaunchConfiguration, PathJoinSubstitution
+from launch.conditions import IfCondition, UnlessCondition
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
@@ -11,7 +13,9 @@ def load_yaml_file_absolute_path(yaml_file):
     with open(yaml_file, 'r') as file:
         return yaml.safe_load(file)
 
-def generate_launch_description():
+def launch_setup(context, *args, **kwargs):
+    use_fake_hardware = LaunchConfiguration("use_fake_hardware")
+    
     # ROS 2 params
     spm_3dof_params = os.path.join(
         get_package_share_directory("cga_ik"),
@@ -108,6 +112,7 @@ def generate_launch_description():
         name="spm_action_server",
         output="screen",
         parameters=[geometric_params],
+        condition=IfCondition(use_fake_hardware)
     )
     
     rviz_node = Node(
@@ -125,4 +130,17 @@ def generate_launch_description():
                       rviz_node,
                       ]
 
-    return LaunchDescription(nodes_to_start)
+    return nodes_to_start
+
+def generate_launch_description():
+    declared_arguments = []
+    # Command-line arguments
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "use_fake_hardware",
+            default_value="true",
+            description="Start robot with fake hardware mirroring command to its states.",
+        )
+    )
+
+    return LaunchDescription(declared_arguments + [OpaqueFunction(function=launch_setup)]) 

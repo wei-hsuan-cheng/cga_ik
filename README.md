@@ -52,9 +52,9 @@ cd ~/ros2_ws && . install/setup.bash
 ros2 launch cga_ik visualise_cobot_6dof.launch.py
 ros2 launch cga_ik visualise_spm_3dof.launch.py
 
-# Control the spm_3dof
-ros2 launch cga_ik control_spm.launch.py # Start action server
-ros2 action send_goal /spm cga_ik_action_interfaces/action/SPM "{start: true}" # Start action client
+# Control the spm_3dof (action server)
+ros2 launch cga_ik control_spm.launch.py use_fake_hardware:=true # false if control real robot
+ros2 action send_goal /spm cga_ik_action_interfaces/action/SPM "{start: true}" # Action client
 ```
 
 Then, you will see the robots visualised in RViz2.

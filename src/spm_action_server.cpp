@@ -184,9 +184,7 @@ private:
   // FSM
   bool stop_action_;
   std::mutex data_mutex_;
-  bool reorigined_;
   bool task_finished_;
-  bool homed_;
 
   enum class SPMFSMState {
     IDLE,
@@ -217,9 +215,7 @@ private:
   {
     fsm_state_   = SPMFSMState::IDLE; // Initial state duing the execution
     stop_action_ = false;
-    reorigined_ = false;
     task_finished_ = false;
-    homed_ = false;
   }
 
   void initMotionParams()
@@ -598,6 +594,18 @@ private:
       ee_traj_pub_->publish(traj_marker);
   }
 
+  bool waitForTime(const double &t_sec = 1.0)
+  {
+      // Waiting for t_sec [s]
+      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "[waitForTime] t_sec = %f", t_sec);
+
+      // Update time
+      t_ = k_ * Ts_;
+      k_ += 1;
+
+      return (t_ > t_sec) ? true : false;
+  }
+
   void getReoriginingPose()
   {
       // Update time
@@ -911,7 +919,7 @@ private:
     RCLCPP_INFO(this->get_logger(),
       "Received SPM goal: start=%d", (int)goal_msg->start);
     if (!goal_msg->start) {
-      RCLCPP_WARN(this->get_logger(), "Goal->start == false => reject");
+      RCLCPP_WARN(this->get_logger(), "Goal->start == false => reject!");
       return rclcpp_action::GoalResponse::REJECT;
     }
 
@@ -932,7 +940,7 @@ private:
   rclcpp_action::CancelResponse handle_cancel(
     const std::shared_ptr<GoalHandleSPM> /*gh*/)
   {
-    RCLCPP_INFO(this->get_logger(), "[SPM] Cancel request => accept");
+    RCLCPP_INFO(this->get_logger(), "[SPM] Cancel request => accept!");
     return rclcpp_action::CancelResponse::ACCEPT;
   }
 
@@ -974,7 +982,7 @@ private:
       {
         std::lock_guard<std::mutex> lock(data_mutex_);
         if (stop_action_) {
-          RCLCPP_WARN(this->get_logger(), "[SPM] Stopped externally => abort");
+          RCLCPP_WARN(this->get_logger(), "[SPM] Stopped externally => abort!");
           result->success = false;
           result->message = "Stopped externally";
           gh->abort(result);
@@ -1003,7 +1011,11 @@ private:
         {
           RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM FSM] IDLE");
           
-          if (true) {
+          if (task_finished_) {
+            // Switch FSM state after waiting for a while
+            if (waitForTime(1.0)) { fsm_state_ = SPMFSMState::END; }
+          } else {
+            // Switch FSM state
             fsm_state_ = SPMFSMState::INITIATE;
           }
           break;
@@ -1013,10 +1025,10 @@ private:
         {
           RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM FSM] INITIATE");
 
-          // Reset time
-          resetTime();
-
           if (true) {
+            // Reset time
+            resetTime();
+            // Switch FSM state
             fsm_state_ = SPMFSMState::REORIGINING;
           }
           break;
@@ -1032,10 +1044,12 @@ private:
           solveSPMIK();
           // Send joint angles command (moving to the new origin)
           sendJointCmd();
-          // Check if new origin is achieved
-          reorigined_ = checkAchieveNewOrigin();
 
-          if (reorigined_) {            
+          // Check if new origin is achieved
+          if (checkAchieveNewOrigin()) {   
+            // Reset time
+            resetTime();         
+            // Switch FSM state
             fsm_state_ = SPMFSMState::REORIGINED;
           }
           break;
@@ -1067,13 +1081,14 @@ private:
            * Print joint angles feedback from the motor 
            */
 
-          // Reset IK target pose to identity
-          quat_ubase_epl_c_cmd_ = Quaternionf::Identity();
+          
 
-          // Reset time
-          resetTime();
-
-          if (true) {            
+          if (true) {
+            // Reset time
+            resetTime();    
+            // Reset IK target pose to identity
+            quat_ubase_epl_c_cmd_ = Quaternionf::Identity();     
+            // Switch FSM state
             fsm_state_ = SPMFSMState::CONTROL;
           }
           break;
@@ -1098,6 +1113,7 @@ private:
             resetTime();
             // Save end pose
             quat_ubase_epl_c_end_ = quat_ubase_epl_c_cmd_;
+            // Switch FSM state
             fsm_state_ = SPMFSMState::HOMING;
           }
           break;
@@ -1115,9 +1131,10 @@ private:
           sendJointCmd();
 
           // Check if home is achieved
-          homed_ = checkAchieveHome();
-
-          if (homed_) {            
+          if (checkAchieveHome()) {        
+            // Reset time
+            resetTime();    
+            // Switch FSM state
             fsm_state_ = SPMFSMState::HOMED;
           }
           break;
@@ -1127,21 +1144,20 @@ private:
         {
           RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM FSM] HOMED");
 
-          // // Change SPM mode to control
-          // spm_mode_ = "CONTROL";
-          // std::cout << "[SPM mode]: " << spm_mode_ << std::endl;
+          // Change SPM mode to control
+          spm_mode_ = "HOME";
+          std::cout << "[SPM mode]: " << spm_mode_ << std::endl;
           
-          // // Reset origin after finishing re-origining
-          // ik_reset_origin_result_ = ik_solver_->resetOrigin(spm_mode_);
+          // Reset origin after finishing homing
+          ik_reset_origin_result_ = ik_solver_->resetOrigin(spm_mode_);
           
-          // // Update the joint angles command for motors
-          // joint_angles_cmd_ << ik_reset_origin_result_.th_0_nom, /* Nominal motor angles */ 
-          //                      ik_reset_origin_result_.th_1_nom, 
-          //                      ik_reset_origin_result_.th_2_nom;
+          // Update the joint angles command for motors
+          joint_angles_cmd_ << ik_reset_origin_result_.th_0_nom, /* Nominal motor angles */ 
+                               ik_reset_origin_result_.th_1_nom, 
+                               ik_reset_origin_result_.th_2_nom;
           
-          // std::cout << "[Re-origining angle] th_z_ee_reset [deg] = " << th_z_ee_reset_ << std::endl;
-          // std::cout << "[Re-origining orientation] quat_ubase_epl_c_reset = " << ik_reset_origin_result_.quat_ubase_epl_c_reset.w() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.x() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.y() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.z() << std::endl;
-          // std::cout << "[Re-origined IK nominal angles] th_0_nom, th_1_nom, th_2_nom [deg] = " << ik_reset_origin_result_.th_0_nom * RM::r2d << ", " << ik_reset_origin_result_.th_1_nom * RM::r2d << ", " << ik_reset_origin_result_.th_2_nom * RM::r2d << std::endl;
+          std::cout << "[Re-origining orientation] quat_ubase_epl_c_reset = " << ik_reset_origin_result_.quat_ubase_epl_c_reset.w() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.x() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.y() << ", " << ik_reset_origin_result_.quat_ubase_epl_c_reset.z() << std::endl;
+          std::cout << "[Re-origined IK nominal angles] th_0_nom, th_1_nom, th_2_nom [deg] = " << ik_reset_origin_result_.th_0_nom * RM::r2d << ", " << ik_reset_origin_result_.th_1_nom * RM::r2d << ", " << ik_reset_origin_result_.th_2_nom * RM::r2d << std::endl;
           
           
           // Print re-originined joint angles
@@ -1149,14 +1165,15 @@ private:
            * Print joint angles feedback from the motor 
            */
 
-          // // Reset IK target pose to identity
-          // quat_ubase_epl_c_cmd_ = Quaternionf::Identity();
+          
 
-          // // Reset time
-          // resetTime();
-
-          if (true) {            
-            fsm_state_ = SPMFSMState::END;
+          if (true) {
+            // Reset time
+            resetTime();     
+            // Reset IK target pose to identity
+            quat_ubase_epl_c_cmd_ = Quaternionf::Identity();
+            // Switch FSM state        
+            fsm_state_ = SPMFSMState::IDLE;
           }
           break;
         }
@@ -1164,11 +1181,12 @@ private:
         case SPMFSMState::END:
         {
           RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM FSM] END");
-          
+            
           result->success = true;
-          result->message = "Task finished => SPM done";
+          result->message = "Task finished => SPM done!";
           gh->succeed(result);
 
+          // Switch FSM state
           fsm_state_ = SPMFSMState::IDLE;
           return;
         }
@@ -1201,7 +1219,7 @@ private:
     } // while ok
 
     // Shut down
-    RCLCPP_WARN(this->get_logger(), "[SPM] ROS shutting down => abort");
+    RCLCPP_WARN(this->get_logger(), "[SPM] ROS shutting down => abort!");
     result->success = false;
     result->message = "ROS shutdown";
     gh->abort(result);
