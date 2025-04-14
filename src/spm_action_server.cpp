@@ -221,7 +221,7 @@ private:
   void initMotionParams()
   {
     freq_cmd_ = 0.1;
-    th_cmd_mag_ = 45.0 * RM::d2r; // [rad]
+    th_cmd_mag_ = 60.0 * RM::d2r; // [rad]
     th_cmd_ = 0.0;
 
     // axis_cmd_ = Vector3d(0.0, 0.0, 1.0);
@@ -598,7 +598,7 @@ private:
   bool waitForTime(const double &t_sec = 1.0)
   {
       // Waiting for t_sec [s]
-      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "[waitForTime] t_sec = %f", t_sec);
+      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), t_sec * 1000, "[waitForTime] t_sec = %f", t_sec);
 
       // Update time
       t_ = k_ * Ts_;
