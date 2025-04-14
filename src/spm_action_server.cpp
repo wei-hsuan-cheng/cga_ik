@@ -225,9 +225,6 @@ private:
     th_cmd_ = 0.0;
 
     // axis_cmd_ = Vector3d(0.0, 0.0, 1.0);
-    // axis_cmd_ = Vector3d(0.0, 1.0, 0.0);
-    // axis_cmd_ = Vector3d(1.0, 0.0, 0.0);
-
     double ang = 45.0 * RM::d2r; // [rad]
     axis_cmd_ = Vector3d(std::cos(ang), 
                          std::sin(ang), 
