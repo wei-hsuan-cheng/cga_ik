@@ -162,6 +162,10 @@ private:
 
   // IK pose command
   Quaternionf quat_ubase_epl_c_cmd_;
+  // End pose
+  Quaternionf quat_ubase_epl_c_end_;
+  // Pose error threshold
+  double quat_err_thresh_;
   // IK motor joints command
   Vector3f joint_angles_cmd_;
 
@@ -225,8 +229,16 @@ private:
     th_cmd_ = 0.0;
 
     // axis_cmd_ = Vector3d(0.0, 0.0, 1.0);
-    axis_cmd_ = Vector3d(0.0, 1.0, 0.0);
+    // axis_cmd_ = Vector3d(0.0, 1.0, 0.0);
     // axis_cmd_ = Vector3d(1.0, 0.0, 0.0);
+
+    double ang = 45.0 * RM::d2r; // [rad]
+    axis_cmd_ = Vector3d(std::cos(ang), 
+                         std::sin(ang), 
+                         -1.0);
+
+    quat_ubase_epl_c_end_ = Quaternionf::Identity();
+    quat_err_thresh_ = 0.01 * RM::d2r; // [rad]
   }
 
   void initControlParams()
@@ -597,15 +609,38 @@ private:
       quat_ubase_epl_c_cmd_ = RM::so32Quat( Vector3d(0.0, 0.0, 1.0) * th ).cast<float>();
   }
 
+  void getReoriginedPose()
+  {
+    // Update time
+    t_ = k_ * Ts_;
+    k_ += 1;
+
+    // Target orientation for the IK problem
+    // Go from quat_ubase_epl_c_end_ to identity
+    Vector3d so3 = RM::Quat2so3( quat_ubase_epl_c_end_.inverse().cast<double>() );
+    double th = RM::SCurve(so3.norm(), 0.0, scur_.lambda, t_, scur_.T);
+    quat_ubase_epl_c_cmd_ = RM::so32Quat( so3.normalized() * th ).cast<float>();
+  }
+
   void getHomingPose()
   {
     // Update time
-      t_ = k_ * Ts_;
-      k_ += 1;
+    t_ = k_ * Ts_;
+    k_ += 1;
 
-      // Target orientation for the IK problem
-      double th = RM::SCurve(th_z_ee_reset_ * RM::d2r, 0.0, scur_.lambda, t_, scur_.T);
-      quat_ubase_epl_c_cmd_ = RM::so32Quat( Vector3d(0.0, 0.0, 1.0) * th ).cast<float>();
+    // // // Target orientation for the IK problem
+    // // Go from quat_ubase_epl_c_end_ to identity
+    // Vector3d d_so3 = RM::Quat2so3( quat_ubase_epl_c_end_.inverse().cast<double>() * Quaterniond::Identity() );
+    // double th = RM::SCurve(d_so3.norm(), 0.0, scur_.lambda, t_, scur_.T);
+    // Quaternionf d_quat = RM::so32Quat( d_so3.normalized() * th ).cast<float>();
+    // quat_ubase_epl_c_cmd_ = quat_ubase_epl_c_end_* d_quat;
+
+    // // Target orientation for the IK problem
+    // Go from quat_ubase_epl_c_end_ to Quatz(-th_z_ee_reset_ * RM::d2r)
+    Vector3d d_so3 = RM::Quat2so3( quat_ubase_epl_c_end_.inverse().cast<double>() * RM::Quatz(-th_z_ee_reset_ * RM::d2r) );
+    double th = RM::SCurve(d_so3.norm(), 0.0, scur_.lambda, t_, scur_.T);
+    Quaternionf d_quat = RM::so32Quat( d_so3.normalized() * th ).cast<float>();
+    quat_ubase_epl_c_cmd_ = quat_ubase_epl_c_end_* d_quat;
   }
 
   void getTargetPose()
@@ -844,13 +879,16 @@ private:
     Quaternionf relative_quat = quat_ubase_epl_c_cmd_.inverse() * RM::Quatz(th_z_ee_reset_ * RM::d2r).cast<float>();
     Vector3d relative_so3 = RM::Quat2so3(relative_quat.cast<double>());
 
-    return ( relative_so3.norm() < 0.1 * RM::d2r ) ? true : false;
+    return ( relative_so3.norm() < quat_err_thresh_ ) ? true : false;
   }
 
   bool checkAchieveHome()
   {
     // Check if the homing is achieved
-    return true;
+    Quaternionf relative_quat = quat_ubase_epl_c_cmd_.inverse() * RM::Quatz(-th_z_ee_reset_ * RM::d2r).cast<float>();
+    Vector3d relative_so3 = RM::Quat2so3(relative_quat.cast<double>());
+
+    return ( relative_so3.norm() < quat_err_thresh_ ) ? true : false;
   }
 
   bool checkFinishTask()
@@ -1056,6 +1094,10 @@ private:
           task_finished_ = checkFinishTask();
 
           if (task_finished_) {
+            // Reset time
+            resetTime();
+            // Save end pose
+            quat_ubase_epl_c_end_ = quat_ubase_epl_c_cmd_;
             fsm_state_ = SPMFSMState::HOMING;
           }
           break;
@@ -1065,12 +1107,12 @@ private:
         {
           RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "[SPM FSM] HOMING");
           
-          // // Homing pose
-          // getHomingPose();
-          // // Solve IK (joint angles) for the spm
-          // solveSPMIK();
-          // // Send joint angles command (moving to the home)
-          // sendJointCmd();
+          // Homing pose
+          getHomingPose();
+          // Solve IK (joint angles) for the spm
+          solveSPMIK();
+          // Send joint angles command (moving to the home)
+          sendJointCmd();
 
           // Check if home is achieved
           homed_ = checkAchieveHome();
