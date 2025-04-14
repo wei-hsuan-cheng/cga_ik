@@ -542,9 +542,10 @@ private:
       pub->publish(light_ray_marker);
   }
 
-  void publishTrajMarkerLineStrip(
+  void publishTrajMarker(
         const Vector4f rgba_color)
   {
+      // Publish traj marker using line strip
       // EE point to trajectory buffer
       {
           TimeStampedPoint new_pt;
@@ -877,7 +878,7 @@ private:
                           );
       
       // Publish the trajectory line strip
-      publishTrajMarkerLineStrip(ee_traj_color_);
+      publishTrajMarker(ee_traj_color_);
 
   }
 
@@ -1013,7 +1014,7 @@ private:
           
           if (task_finished_) {
             // Switch FSM state after waiting for a while
-            if (waitForTime(1.0)) { fsm_state_ = SPMFSMState::END; }
+            fsm_state_ = (waitForTime(TRAIL_DURATION_SEC)) ? SPMFSMState::END : fsm_state_;
           } else {
             // Switch FSM state
             fsm_state_ = SPMFSMState::INITIATE;
