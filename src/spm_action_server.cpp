@@ -678,10 +678,21 @@ private:
       // th_cmd_ = RM::SCurve(th_cmd_mag_, 0.0, scur_.lambda, t_, scur_.T); // [rad]
       // quat_ubase_epl_c_cmd_ = RM::so32Quat( axis_cmd_.normalized() * th_cmd_ ).cast<float>();
 
-      // C-axis (z-rotation) and A-axis (x-rotation) of milling machines
-      th_cmd_ = RM::SCurve(ang_a_ * RM::d2r, 0.0, scur_.lambda, t_, scur_.T); // [rad]
-      quat_ubase_epl_c_cmd_ = RM::so32Quat( axis_c_.normalized() * th_cmd_ ).cast<float>();
+      // // C-axis (z-rotation) and A-axis (x-rotation) of milling machines
+      // th_cmd_ = RM::SCurve(ang_a_ * RM::d2r, 0.0, scur_.lambda, t_, scur_.T); // [rad]
+      // quat_ubase_epl_c_cmd_ = RM::so32Quat( axis_c_.normalized() * th_cmd_ ).cast<float>();
 
+      // C-axis (z-rotation) and A-axis (x-rotation) of milling machines
+      // Circular motion
+      double freq_c = 0.5;
+      double ang_c = 2.0 * M_PI * freq_c * t_;
+      ang_c_ = RM::SCurve(ang_c, 0.0, scur_.lambda, t_, scur_.T); // [rad]
+      axis_c_ = Vector3d(std::cos(ang_c_ + M_PI / 2.0), std::sin(ang_c_ + M_PI / 2.0), 0.0);
+      
+      double freq_a = freq_c * 0.1;
+      double ang_a = 45.0 * RM::d2r * std::sin(2.0 * M_PI * freq_a * t_); // [rad]
+      ang_a_ = RM::SCurve(ang_a, 0.0, scur_.lambda, t_, scur_.T); // [rad]
+      quat_ubase_epl_c_cmd_ = RM::so32Quat( axis_c_.normalized() * ang_a_ ).cast<float>();
   }
 
   void solveSPMIK() 
@@ -1127,8 +1138,8 @@ private:
           // Send joint angles command
           sendJointCmd();
 
-          // Check finishing the task
-          task_finished_ = checkFinishTask();
+          // // Check finishing the task
+          // task_finished_ = checkFinishTask();
 
           if (task_finished_) {
             // Reset time
