@@ -159,6 +159,10 @@ private:
   Vector3d axis_a_;
   double ang_a_;
 
+  // Piecewise motions fragment
+  int motion_fragment_;
+  double t_end_fragmet_;
+
   // IK solver object and result
   std::shared_ptr<CGAIKSPM3DoF> ik_solver_;
   Vector9f ik_joint_angles_;
@@ -242,6 +246,10 @@ private:
     freq_cmd_ = 0.1;
 
     quat_ubase_epl_c_end_ = RM::so32Quat( axis_c_.normalized() * ang_a_ * RM::d2r ).cast<float>();
+
+    // Piecewise motions fragment
+    motion_fragment_ = 0;
+    t_end_fragmet_ = 0.0;
 
     quat_err_thresh_ = 0.01 * RM::d2r; // [rad]
   }
@@ -667,6 +675,117 @@ private:
     quat_ubase_epl_c_cmd_ = quat_ubase_epl_c_end_* d_quat;
   }
 
+  Vector2f xy2rtheta(const Vector2f &xy)
+  {
+      // Cartisian to polar coordinates
+      Vector2f rtheta;
+      rtheta(0) = xy.norm();
+      rtheta(1) = std::atan2(xy(1), xy(0));
+      return rtheta;
+  }
+
+  Vector2f getXYMotion()
+  {
+    
+    // Linear motion in x-direction
+    double x_max = 0.5; // [m]
+    double y_max = 0.5; // [m]
+    double vel = 2.0 * x_max / 5.0; // [m/s]
+    Vector2f motion_xy;
+
+    // Piecewise linear motions
+    switch (motion_fragment_) {
+      case 0:
+        {
+          // (x_max, y_max) -> (-x_max, y_max)
+          double end = -x_max;
+          double actual = x_max - vel * (t_ - t_end_fragmet_);
+          if (actual > end) {
+            motion_xy(0) = actual;
+            motion_xy(1) = y_max;
+            motion_fragment_ = 0;
+          } else {
+            // Reset time
+            t_end_fragmet_ = t_;
+            motion_xy(0) = end;
+            motion_xy(1) = y_max;
+            motion_fragment_ = 1;
+            
+          }
+
+          break;
+        }
+
+      case 1:
+        {
+          // (-x_max, y_max) -> (-x_max, -y_max)
+          double end = -y_max;
+          double actual = y_max - vel * (t_ - t_end_fragmet_);
+          if (actual > end) {
+            motion_xy(0) = -x_max;
+            motion_xy(1) = actual;
+            motion_fragment_ = 1;
+          } else {
+            motion_xy(0) = -x_max;
+            motion_xy(1) = end;
+            motion_fragment_ = 2;
+            // Reset time
+            t_end_fragmet_ = t_;
+          }
+
+          break;
+        }
+      
+      case 2:
+        {
+          // (-x_max, -y_max) -> (x_max, -y_max)
+          double end = x_max;
+          double actual = -x_max + vel * (t_ - t_end_fragmet_);
+          if (actual < end) {
+            motion_xy(0) = actual;
+            motion_xy(1) = -y_max;
+            motion_fragment_ = 2;
+          } else {
+            motion_xy(0) = end;
+            motion_xy(1) = -y_max;
+            motion_fragment_ = 3;
+            // Reset time
+            t_end_fragmet_ = t_;
+          }
+
+          break;
+        }
+      
+      case 3:
+        {
+          // (x_max, -y_max) -> (x_max, y_max)
+          double end = y_max;
+          double actual = -y_max + vel * (t_ - t_end_fragmet_);
+          if (actual < end) {
+            motion_xy(0) = x_max;
+            motion_xy(1) = actual;
+            motion_fragment_ = 3;
+          } else {
+            motion_xy(0) = x_max;
+            motion_xy(1) = end;
+            motion_fragment_ = 0;
+            // Reset time
+            t_end_fragmet_ = t_;
+          }
+
+          break;
+        }
+
+      default:
+        {
+          break;
+        }
+    }
+
+    
+    return motion_xy;
+  }
+
   void getTargetPose()
   {
       // Update time
@@ -678,21 +797,36 @@ private:
       // th_cmd_ = RM::SCurve(th_cmd_mag_, 0.0, scur_.lambda, t_, scur_.T); // [rad]
       // quat_ubase_epl_c_cmd_ = RM::so32Quat( axis_cmd_.normalized() * th_cmd_ ).cast<float>();
 
+
       // // C-axis (z-rotation) and A-axis (x-rotation) of milling machines
       // th_cmd_ = RM::SCurve(ang_a_ * RM::d2r, 0.0, scur_.lambda, t_, scur_.T); // [rad]
       // quat_ubase_epl_c_cmd_ = RM::so32Quat( axis_c_.normalized() * th_cmd_ ).cast<float>();
 
-      // C-axis (z-rotation) and A-axis (x-rotation) of milling machines
-      // Circular motion
-      double freq_c = 0.5;
-      double ang_c = 2.0 * M_PI * freq_c * t_;
-      ang_c_ = RM::SCurve(ang_c, 0.0, scur_.lambda, t_, scur_.T); // [rad]
-      axis_c_ = Vector3d(std::cos(ang_c_ + M_PI / 2.0), std::sin(ang_c_ + M_PI / 2.0), 0.0);
+
+      // // C-axis (z-rotation) and A-axis (x-rotation) of milling machines
+      // // Circular motion
+      // double freq_c = 0.5;
+      // double ang_c = 2.0 * M_PI * freq_c * t_;
+      // ang_c_ = RM::SCurve(ang_c, 0.0, scur_.lambda, t_, scur_.T); // [rad]
+      // axis_c_ = Vector3d(std::cos(ang_c_ + M_PI / 2.0), std::sin(ang_c_ + M_PI / 2.0), 0.0);
       
-      double freq_a = freq_c * 0.1;
-      double ang_a = 45.0 * RM::d2r * std::sin(2.0 * M_PI * freq_a * t_); // [rad]
-      ang_a_ = RM::SCurve(ang_a, 0.0, scur_.lambda, t_, scur_.T); // [rad]
+      // double freq_a = freq_c * 0.1;
+      // double ang_a = 45.0 * RM::d2r * std::sin(2.0 * M_PI * freq_a * t_); // [rad]
+      // ang_a_ = RM::SCurve(ang_a, 0.0, scur_.lambda, t_, scur_.T); // [rad]
+      
+      // quat_ubase_epl_c_cmd_ = RM::so32Quat( axis_c_.normalized() * ang_a_ ).cast<float>();
+
+
+      // C-axis (z-rotation) and A-axis (x-rotation) of milling machines
+      Vector2f motion_xy = getXYMotion();
+      Vector2f rtheta = xy2rtheta(motion_xy);
+
+      ang_c_ = RM::SCurve(rtheta(1), 0.0, scur_.lambda, t_, scur_.T); // [rad]
+      ang_a_ = RM::SCurve(rtheta(0), 0.0, scur_.lambda, t_, scur_.T); // [rad]
+
+      axis_c_ = Vector3d(std::cos(ang_c_ + M_PI / 2.0), std::sin(ang_c_ + M_PI / 2.0), 0.0);
       quat_ubase_epl_c_cmd_ = RM::so32Quat( axis_c_.normalized() * ang_a_ ).cast<float>();
+
   }
 
   void solveSPMIK() 
