@@ -146,7 +146,7 @@ private:
   // For the trajectory
   std::deque<TimeStampedPoint> trajectory_buffer_;
   // const double TRAIL_DURATION_SEC = 2.0; // keep last few seconds of end-effector path
-  const double TRAIL_DURATION_SEC = 20.0; // keep last few seconds of end-effector path
+  const double TRAIL_DURATION_SEC = 30.0; // keep last few seconds of end-effector path
 
   // Motion params
   double freq_cmd_;
@@ -685,53 +685,76 @@ private:
       return rtheta;
   }
 
-  Vector2f getXYStarMotion()
+  Vector2f getXYSixPointStarMotion()
   {
       // Star of David pattern parameters
       const double inner_radius = 0.5; // Inner points
       const double outer_radius = inner_radius * std::sqrt(3);  // [m] size of the star
       const double vel = 2.0 * outer_radius / 5.0; // [m/s] same velocity as before
-      
+
+      // 0 [deg]
+      Vector2f p_0_deg = Vector2f(inner_radius * std::cos(0.0), 
+                inner_radius * std::sin(0.0));              
+      // 30 [deg]
+      Vector2f p_30_deg = Vector2f(outer_radius * std::cos(M_PI/6), 
+                outer_radius * std::sin(M_PI/6));  
+      // 60 [deg]
+      Vector2f p_60_deg = Vector2f(inner_radius * std::cos(M_PI/3), 
+                inner_radius * std::sin(M_PI/3)); 
+      // 90 [deg]
+      Vector2f p_90_deg = Vector2f(outer_radius * std::cos(M_PI/2), 
+                outer_radius * std::sin(M_PI/2));  
+      // 120 [deg]
+      Vector2f p_120_deg = Vector2f(inner_radius * std::cos(2*M_PI/3), 
+                inner_radius * std::sin(2*M_PI/3));
+      // 150 [deg]
+      Vector2f p_150_deg = Vector2f(outer_radius * std::cos(5*M_PI/6), 
+                outer_radius * std::sin(5*M_PI/6));
+      // 180 [deg]
+      Vector2f p_180_deg = Vector2f(inner_radius * std::cos(M_PI), 
+                inner_radius * std::sin(M_PI));
+      // 210 [deg]
+      Vector2f p_210_deg = Vector2f(outer_radius * std::cos(7*M_PI/6), 
+                outer_radius * std::sin(7*M_PI/6));
+      // 240 [deg]
+      Vector2f p_240_deg = Vector2f(inner_radius * std::cos(4*M_PI/3), 
+                inner_radius * std::sin(4*M_PI/3));
+      // 270 [deg]
+      Vector2f p_270_deg = Vector2f(outer_radius * std::cos(3*M_PI/2), 
+                outer_radius * std::sin(3*M_PI/2));
+      // 300 [deg]
+      Vector2f p_300_deg = Vector2f(inner_radius * std::cos(5*M_PI/3), 
+                inner_radius * std::sin(5*M_PI/3));
+      // 330 [deg]
+      Vector2f p_330_deg = Vector2f(outer_radius * std::cos(11*M_PI/6), 
+                outer_radius * std::sin(11*M_PI/6));
+
+
       Vector2f motion_xy;
 
-      // The 12 points of the Star of David (alternating outer and inner points)
-      const std::array<Vector2f, 12> star_points = {
-          // 0 [deg]
-          Vector2f(inner_radius * std::cos(0.0), 
-                   inner_radius * std::sin(0.0)),                 
-          // 30 [deg]
-          Vector2f(outer_radius * std::cos(M_PI/6), 
-                   outer_radius * std::sin(M_PI/6)),  
-          // 60 [deg]
-          Vector2f(inner_radius * std::cos(M_PI/3), 
-                   inner_radius * std::sin(M_PI/3)), 
-          // 90 [deg]
-          Vector2f(outer_radius * std::cos(M_PI/2), 
-                   outer_radius * std::sin(M_PI/2)),  
-          // 120 [deg]
-          Vector2f(inner_radius * std::cos(2*M_PI/3), 
-                   inner_radius * std::sin(2*M_PI/3)),
-          // 150 [deg]
-          Vector2f(outer_radius * std::cos(5*M_PI/6), 
-                   outer_radius * std::sin(5*M_PI/6)),
-          // 180 [deg]
-          Vector2f(inner_radius * std::cos(M_PI), 
-                   inner_radius * std::sin(M_PI)),
-          // 210 [deg]
-          Vector2f(outer_radius * std::cos(7*M_PI/6), 
-                   outer_radius * std::sin(7*M_PI/6)),
-          // 240 [deg]
-          Vector2f(inner_radius * std::cos(4*M_PI/3), 
-                   inner_radius * std::sin(4*M_PI/3)),
-          // 270 [deg]
-          Vector2f(outer_radius * std::cos(3*M_PI/2), 
-                   outer_radius * std::sin(3*M_PI/2)),
-          // 300 [deg]
-          Vector2f(inner_radius * std::cos(5*M_PI/3), 
-                   inner_radius * std::sin(5*M_PI/3)),
-          // 330 [deg]
-          Vector2f(outer_radius * std::cos(11*M_PI/6), 
-                   outer_radius * std::sin(11*M_PI/6))
+      // The Star of David (alternating outer and inner points)
+      const std::array<Vector2f, 17> star_points = {
+          p_0_deg,
+          p_30_deg,
+          p_150_deg,
+          p_270_deg,
+
+          p_0_deg,
+          p_90_deg,
+          p_210_deg,
+          p_330_deg,
+
+          p_0_deg,
+          p_30_deg,
+          p_150_deg,
+          p_270_deg,
+
+          p_0_deg,
+          p_90_deg,
+          p_210_deg,
+          p_330_deg,
+
+          p_0_deg
       };
       
       // Calculate total path length for velocity control
@@ -754,6 +777,75 @@ private:
               // We're in this segment
               double alpha = (path_position - accumulated_length) / segment_length;
               motion_xy = star_points[i] + alpha * (star_points[next_i] - star_points[i]);
+              
+              // Check if we've completed a full cycle
+              if (path_position + vel*Ts_ >= total_length) {
+                  t_end_fragmet_ = t_; // Reset timing for next cycle
+              }
+              
+              return motion_xy;
+          }
+          accumulated_length += segment_length;
+      }
+      
+      // Default return (shouldn't reach here)
+      return Vector2f::Zero();
+  }
+
+
+  Vector2f getXYFivePointStarMotion()
+  {
+      // Five-point star pattern parameters
+      const double outer_radius = 0.5;  // [m] radius to star points
+      const double inner_radius = outer_radius * 0.382; // Golden ratio for perfect star
+      const double vel = 2.0 * outer_radius / 5.0; // [m/s] same velocity as before
+
+      // Calculate the 10 points of the star (5 outer, 5 inner)
+      std::array<Vector2f, 10> star_points;
+      for (int i = 0; i < 5; ++i) {
+          double outer_angle = 2.0 * M_PI * i / 5.0 - M_PI/2.0; // Offset by -90° to start at top
+          double inner_angle = outer_angle + M_PI / 5.0; // Inner points offset by 36°
+          
+          // Outer points (0, 2, 4, 6, 8)
+          star_points[2*i] = Vector2f(
+              outer_radius * std::cos(outer_angle),
+              outer_radius * std::sin(outer_angle)
+          );
+          
+          // Inner points (1, 3, 5, 7, 9)
+          star_points[2*i + 1] = Vector2f(
+              inner_radius * std::cos(inner_angle),
+              inner_radius * std::sin(inner_angle)
+          );
+      }
+
+      Vector2f motion_xy;
+
+      // The star path (connect all points in order)
+      const std::array<Vector2f, 11> star_path = {
+          star_points[0], star_points[1], star_points[2], star_points[3], star_points[4],
+          star_points[5], star_points[6], star_points[7], star_points[8], star_points[9],
+          star_points[0]  // Close the star
+      };
+      
+      // Calculate total path length for velocity control
+      double total_length = 0.0;
+      for (size_t i = 0; i < star_path.size() - 1; ++i) {
+          total_length += (star_path[i+1] - star_path[i]).norm();
+      }
+      
+      // Calculate current position along path
+      double path_position = std::fmod(vel * (t_ - t_end_fragmet_), total_length);
+      
+      // Find current segment
+      double accumulated_length = 0.0;
+      for (size_t i = 0; i < star_path.size() - 1; ++i) {
+          double segment_length = (star_path[i+1] - star_path[i]).norm();
+          
+          if (path_position <= accumulated_length + segment_length) {
+              // We're in this segment
+              double alpha = (path_position - accumulated_length) / segment_length;
+              motion_xy = star_path[i] + alpha * (star_path[i+1] - star_path[i]);
               
               // Check if we've completed a full cycle
               if (path_position + vel*Ts_ >= total_length) {
@@ -904,7 +996,8 @@ private:
 
       // C-axis (z-rotation) and A-axis (x-rotation) of milling machines
       // Vector2f motion_xy = getXYMotion();
-      Vector2f motion_xy = getXYStarMotion();
+      // Vector2f motion_xy = getXYSixPointStarMotion();
+      Vector2f motion_xy = getXYFivePointStarMotion();
       Vector2f rtheta = xy2rtheta(motion_xy);
 
       ang_c_ = RM::SCurve(rtheta(1), 0.0, scur_.lambda, t_, scur_.T); // [rad]
