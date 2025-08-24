@@ -272,6 +272,10 @@ private:
     if (cga_ik_cobot_6dof::reachable) {
         cga_ik_cobot_6dof::SolveJointAngles();
         joint_angles_ = cga_ik_cobot_6dof::joints;
+
+        // // Print the joint angles in [rad]
+        // RM::PrintVec(joint_angles_, "\nJoint angles [rad]");
+
     } else {
         std::cerr << "\nTarget target_pose is not reachable!" << std::endl;
     }

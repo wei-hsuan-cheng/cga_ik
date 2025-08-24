@@ -62,12 +62,12 @@ Then, you will see the robots visualised in RViz2.
   <table>
     <tr>
       <td align="center">
-        <img src="/images/cobot_6dof_rviz.png" height="250px"/>
+        <img src="/assets/cga_ik_rviz_cobot.gif" height="250px"/>
         <br/>
         <sub><b>6-DoF Collaborative Arm</b></sub>
       </td>
       <td align="center">
-        <img src="/images/spm_3dof_rviz.png" height="250px"/>
+        <img src="/assets/cga_ik_rviz_spm.gif" height="250px"/>
         <br/>
         <sub><b>3-DoF Spherical Parallel Manipulator</b></sub>
       </td>
